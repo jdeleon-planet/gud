@@ -137,10 +137,13 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
   <button class="filter-btn" onclick="setFilter('incomplete',this)">No completados</button>
   <button class="filter-btn" onclick="setFilter('partial',this)">En progreso</button>
   <button class="filter-btn" onclick="setFilter('complete',this)">Completados ✅</button>
-  <button class="filter-btn" onclick="setFilter('db',this)">Planet DB</button>
+  <button class="filter-btn" onclick="setFilter('bd',this)">Existe en BD</button>
+  <button class="filter-btn" onclick="setFilter('email',this)">Email HubSpot</button>
+  <button class="filter-btn" onclick="setFilter('grupo',this)">Grupo HubSpot</button>
   <button class="filter-btn" onclick="setFilter('licencia',this)">Licencia Core</button>
-  <button class="filter-btn" onclick="setFilter('permiso',this)">Permiso HubSpot</button>
-  <button class="filter-btn" onclick="setFilter('validado',this)">Validado y entrado</button>
+  <button class="filter-btn" onclick="setFilter('permisos',this)">Permisos</button>
+  <button class="filter-btn" onclick="setFilter('asignado',this)">Grupo asignado</button>
+  <button class="filter-btn" onclick="setFilter('validado',this)">Validado ✅</button>
 </div>
 <div class="layout">
   <div class="main-col">
@@ -221,8 +224,8 @@ async function addLog(msg, rawName=''){
 // Core data - starts empty, loaded from Sheet via Firebase
 let RAW=[];
 
-const CHECKS=['db','licencia','permiso','validado'];
-const CHECK_LABELS={db:'Encontrado en Planet DB',licencia:'Licencia Core HubSpot',permiso:'Permiso correcto en HubSpot',validado:'Validado y entrado'};
+const CHECKS=['bd','email','grupo','licencia','permisos','asignado','validado'];
+const CHECK_LABELS={bd:'Existe en BD',email:'Email en HubSpot',grupo:'Grupo en HubSpot',licencia:'Licencia Core',permisos:'Permisos correctos',asignado:'Grupo asignado',validado:'Validado ✅'};
 const emailMap={},supMap={},rangoMap={},pvMap={};
 const children={};
 
@@ -404,15 +407,15 @@ async function setCheck(name,field,val){
   catch(e){console.error(e);setSyncStatus('err');}
 }
 function getCheckCount(name){return CHECKS.filter(k=>getChecks(name)[k]).length;}
-function updateDoneCount(){document.getElementById('s-done').textContent=RAW.filter(([n])=>getCheckCount(n)===4).length;}
+function updateDoneCount(){document.getElementById('s-done').textContent=RAW.filter(([n])=>getCheckCount(n)===7).length;}
 
 // Filter: show node if it passes, dim it if it doesn't but has matching descendants
 function passesFilter(name){
   const c=getChecks(name);const cnt=CHECKS.filter(k=>c[k]).length;
   if(currentFilter==='all') return true;
-  if(currentFilter==='incomplete') return cnt<4;
-  if(currentFilter==='partial') return cnt>0&&cnt<4;
-  if(currentFilter==='complete') return cnt===4;
+  if(currentFilter==='incomplete') return cnt<7;
+  if(currentFilter==='partial') return cnt>0&&cnt<7;
+  if(currentFilter==='complete') return cnt===7;
   return !!c[currentFilter];
 }
 function hasMatchingDescendant(name){
@@ -486,7 +489,7 @@ function buildNode(name,level){
   }
   function countDescendantsDone(n){
     const k=children[n]||[];
-    return k.reduce((t,c)=>t+(getCheckCount(c)===4?1:0)+countDescendantsDone(c),0);
+    return k.reduce((t,c)=>t+(getCheckCount(c)===7?1:0)+countDescendantsDone(c),0);
   }
   const totalDesc=countDescendants(name);
   const doneDesc=countDescendantsDone(name);
@@ -519,7 +522,7 @@ function buildNode(name,level){
           <span style="font-size:11px;opacity:0.8;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">👤 ${supMap[name]}</span>
           <button class="copy-btn" id="sb_${nb}" onclick="copyText(event,'${(supMap[name]||'').replace(/'/g,"\\'")}','sb_${nb}')">Líder</button>
         </div>`:''}
-        <div class="progress-bar"><div class="progress-fill" style="width:${cnt*25}%"></div></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${Math.round(cnt*100/7)}%"></div></div>
         <div class="checks" onclick="event.stopPropagation()">
           ${CHECKS.map(k=>`<label class="check-item"><input type="checkbox" ${chks[k]?'checked':''} onchange="toggleCheck(event,'${sn}','${k}')"><span class="check-label">${CHECK_LABELS[k]}</span></label>`).join('')}
         </div>
@@ -575,7 +578,7 @@ function renderTree(){
           </div>
         </div>
         <div style="margin-top:10px;">
-          <div style="height:4px;border-radius:2px;background:#e0e0e0;margin-bottom:8px;overflow:hidden;"><div style="height:100%;background:#1D9E75;width:${cnt*25}%;transition:width 0.3s;"></div></div>
+          <div style="height:4px;border-radius:2px;background:#e0e0e0;margin-bottom:8px;overflow:hidden;"><div style="height:100%;background:#1D9E75;width:${Math.round(cnt*100/7)}%;transition:width 0.3s;"></div></div>
           ${CHECKS.map(k=>`<label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:3px 0;">
             <input type="checkbox" ${chks[k]?'checked':''} onchange="toggleCheck(event,'${n.replace(/'/g,"\\'")}','${k}')" style="width:15px;height:15px;cursor:pointer;accent-color:#1D9E75;">
             <span style="font-size:12px;color:#333;">${CHECK_LABELS[k]}</span>
