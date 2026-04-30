@@ -6,63 +6,52 @@
 <title>Organigrama Planet Solar</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f0;padding:30px 20px;color:#1a1a1a;display:flex;justify-content:center;}
-.container{max-width:900px;width:100%;}
-h1{font-size:20px;font-weight:500;color:#042C53;margin-bottom:4px;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;padding:24px 20px;color:#1a1a1a;display:flex;justify-content:center;}
+.container{max-width:960px;width:100%;}
+h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
 .subtitle{font-size:13px;color:#888;margin-bottom:16px;}
-.stats{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
-.stat{background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:10px 16px;font-size:12px;color:#666;}
-.stat span{font-weight:600;color:#042C53;font-size:18px;display:block;}
-.toolbar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.stats{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.stat{background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:8px 14px;font-size:12px;color:#666;}
+.stat span{font-weight:700;color:#042C53;font-size:17px;display:block;}
+.toolbar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;}
 .toolbar input{flex:1;min-width:200px;font-size:13px;padding:8px 12px;border:1px solid #ddd;border-radius:8px;outline:none;}
 .toolbar input:focus{border-color:#378ADD;}
 .btn{font-size:12px;padding:8px 14px;border:1px solid #ddd;border-radius:8px;cursor:pointer;background:#fff;color:#333;white-space:nowrap;}
 .btn:hover{background:#f0f0f0;}
+.filters{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+.filter-label{font-size:12px;color:#666;font-weight:600;margin-right:2px;}
+.filter-btn{font-size:11px;padding:5px 12px;border:1px solid #ddd;border-radius:20px;cursor:pointer;background:#fff;color:#555;white-space:nowrap;}
+.filter-btn:hover{background:#f0f0f0;}
+.filter-btn.active{background:#042C53;color:#fff;border-color:#042C53;}
 .node-wrap{margin:4px 0;}
 .node-row{display:flex;align-items:flex-start;gap:6px;}
-.toggle-btn{margin-top:10px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#888;flex-shrink:0;cursor:pointer;}
-.node-card{border-radius:10px;padding:10px 14px;min-width:220px;max-width:280px;cursor:pointer;}
-.node-name{font-size:13px;font-weight:600;line-height:1.3;margin-bottom:2px;}
-.node-pos{font-size:11px;margin-bottom:6px;opacity:0.85;}
-.email-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-.email-text{font-size:10px;font-family:'Courier New',monospace;opacity:0.9;flex:1;min-width:0;word-break:break-all;}
-.copy-btn{font-size:11px;font-weight:600;padding:5px 12px;border-radius:6px;cursor:pointer;border:none;white-space:nowrap;flex-shrink:0;}
+.toggle-btn{margin-top:12px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#888;flex-shrink:0;cursor:pointer;}
+.node-card{border-radius:10px;padding:12px 14px;min-width:260px;max-width:340px;cursor:pointer;}
+.name-row{display:flex;align-items:center;gap:6px;margin-bottom:2px;}
+.node-name{font-size:13px;font-weight:700;line-height:1.3;flex:1;}
+.node-pos{font-size:11px;margin-bottom:8px;opacity:0.85;}
+.email-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+.email-text{font-size:12px;font-family:'Courier New',monospace;white-space:nowrap;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.copy-btn{font-size:10px;font-weight:700;padding:4px 9px;border-radius:5px;cursor:pointer;border:none;white-space:nowrap;flex-shrink:0;}
 .copy-btn:hover{opacity:0.85;}
 .copy-btn.copied{background:#1D9E75!important;color:#fff!important;}
+.checks{display:flex;flex-direction:column;gap:5px;margin-top:6px;border-top:1px solid rgba(255,255,255,0.2);padding-top:8px;}
+.check-item{display:flex;align-items:center;gap:7px;cursor:pointer;padding:2px 0;}
+.check-item input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#1D9E75;flex-shrink:0;}
+.check-label{font-size:11px;user-select:none;}
+.progress-bar{height:4px;border-radius:2px;background:rgba(255,255,255,0.3);margin-bottom:6px;overflow:hidden;}
+.progress-fill{height:100%;background:#1D9E75;transition:width 0.3s;}
 .children{padding-left:28px;border-left:2px solid #ddd;margin-left:18px;margin-top:2px;}
-.lvl0 .node-card{background:#042C53;}
-.lvl0 .node-name{color:#E6F1FB;}
-.lvl0 .node-pos{color:#85B7EB;}
-.lvl0 .email-text{color:#85B7EB;}
-.lvl0 .copy-btn{background:#378ADD;color:#042C53;}
-.lvl1 .node-card{background:#185FA5;}
-.lvl1 .node-name{color:#E6F1FB;}
-.lvl1 .node-pos{color:#B5D4F4;}
-.lvl1 .email-text{color:#B5D4F4;}
-.lvl1 .copy-btn{background:#E6F1FB;color:#042C53;}
-.lvl2 .node-card{background:#378ADD;}
-.lvl2 .node-name{color:#fff;}
-.lvl2 .node-pos{color:#E6F1FB;}
-.lvl2 .email-text{color:#E6F1FB;}
-.lvl2 .copy-btn{background:#042C53;color:#E6F1FB;}
-.lvl3 .node-card{background:#85B7EB;}
-.lvl3 .node-name{color:#042C53;}
-.lvl3 .node-pos{color:#042C53;}
-.lvl3 .email-text{color:#042C53;}
-.lvl3 .copy-btn{background:#042C53;color:#E6F1FB;}
-.lvl4 .node-card{background:#B5D4F4;}
-.lvl4 .node-name{color:#042C53;}
-.lvl4 .node-pos{color:#185FA5;}
-.lvl4 .email-text{color:#185FA5;}
-.lvl4 .copy-btn{background:#185FA5;color:#fff;}
-.lvl5 .node-card{background:#E6F1FB;border:1px solid #85B7EB;}
-.lvl5 .node-name{color:#042C53;}
-.lvl5 .node-pos{color:#185FA5;}
-.lvl5 .email-text{color:#185FA5;}
-.lvl5 .copy-btn{background:#185FA5;color:#fff;}
+.lvl0 .node-card{background:#042C53;}.lvl0 .node-name{color:#E6F1FB;}.lvl0 .node-pos{color:#85B7EB;}.lvl0 .email-text{color:#85B7EB;}.lvl0 .copy-btn{background:#378ADD;color:#042C53;}.lvl0 .check-label{color:#B5D4F4;}.lvl0 .checks{border-top-color:rgba(255,255,255,0.15);}.lvl0 .progress-bar{background:rgba(255,255,255,0.15);}
+.lvl1 .node-card{background:#185FA5;}.lvl1 .node-name{color:#E6F1FB;}.lvl1 .node-pos{color:#B5D4F4;}.lvl1 .email-text{color:#B5D4F4;}.lvl1 .copy-btn{background:#E6F1FB;color:#042C53;}.lvl1 .check-label{color:#E6F1FB;}.lvl1 .checks{border-top-color:rgba(255,255,255,0.2);}.lvl1 .progress-bar{background:rgba(255,255,255,0.2);}
+.lvl2 .node-card{background:#378ADD;}.lvl2 .node-name{color:#fff;}.lvl2 .node-pos{color:#E6F1FB;}.lvl2 .email-text{color:#E6F1FB;}.lvl2 .copy-btn{background:#042C53;color:#E6F1FB;}.lvl2 .check-label{color:#fff;}.lvl2 .checks{border-top-color:rgba(255,255,255,0.25);}.lvl2 .progress-bar{background:rgba(255,255,255,0.25);}
+.lvl3 .node-card{background:#85B7EB;}.lvl3 .node-name{color:#042C53;}.lvl3 .node-pos{color:#042C53;}.lvl3 .email-text{color:#042C53;}.lvl3 .copy-btn{background:#042C53;color:#E6F1FB;}.lvl3 .check-label{color:#042C53;}.lvl3 .checks{border-top-color:rgba(4,44,83,0.2);}.lvl3 .progress-bar{background:rgba(4,44,83,0.15);}
+.lvl4 .node-card{background:#B5D4F4;}.lvl4 .node-name{color:#042C53;}.lvl4 .node-pos{color:#185FA5;}.lvl4 .email-text{color:#185FA5;}.lvl4 .copy-btn{background:#185FA5;color:#fff;}.lvl4 .check-label{color:#042C53;}.lvl4 .checks{border-top-color:rgba(4,44,83,0.15);}.lvl4 .progress-bar{background:rgba(4,44,83,0.12);}
+.lvl5 .node-card{background:#E6F1FB;border:1px solid #85B7EB;}.lvl5 .node-name{color:#042C53;}.lvl5 .node-pos{color:#185FA5;}.lvl5 .email-text{color:#185FA5;}.lvl5 .copy-btn{background:#185FA5;color:#fff;}.lvl5 .check-label{color:#042C53;}.lvl5 .checks{border-top-color:rgba(4,44,83,0.12);}.lvl5 .progress-bar{background:rgba(4,44,83,0.1);}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#042C53;color:#E6F1FB;font-size:13px;font-weight:500;padding:8px 20px;border-radius:20px;opacity:0;transition:opacity 0.2s;pointer-events:none;z-index:999;}
-.toast.show{opacity:1;}
-.search-result{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #eee;background:#fff;border-radius:8px;margin-bottom:4px;}
+.search-card{background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:14px;margin-bottom:10px;}
+.lider-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;margin-bottom:4px;}
+.lider-num{width:22px;height:22px;border-radius:50%;background:#185FA5;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 </style>
 </head>
 <body>
@@ -73,16 +62,28 @@ h1{font-size:20px;font-weight:500;color:#042C53;margin-bottom:4px;}
   <div class="stat"><span id="s-teams">—</span>equipos</div>
   <div class="stat"><span>151</span>usuarios</div>
   <div class="stat"><span>6</span>niveles</div>
+  <div class="stat"><span id="s-done">0</span>completados ✅</div>
 </div>
 <div class="toolbar">
   <input type="text" id="search" placeholder="Buscar por nombre...">
   <button class="btn" onclick="expandAll()">Expandir todo</button>
   <button class="btn" onclick="collapseAll()">Colapsar</button>
+  <button class="btn" onclick="clearAll()" style="color:#c0392b;border-color:#e0b0b0;">Limpiar checks</button>
+</div>
+<div class="filters">
+  <span class="filter-label">Filtrar:</span>
+  <button class="filter-btn active" onclick="setFilter('all',this)">Todos</button>
+  <button class="filter-btn" onclick="setFilter('none',this)">Sin validar</button>
+  <button class="filter-btn" onclick="setFilter('partial',this)">En progreso</button>
+  <button class="filter-btn" onclick="setFilter('complete',this)">Completados ✅</button>
+  <button class="filter-btn" onclick="setFilter('db',this)">Planet DB</button>
+  <button class="filter-btn" onclick="setFilter('licencia',this)">Licencia Core</button>
+  <button class="filter-btn" onclick="setFilter('permiso',this)">Permiso HubSpot</button>
+  <button class="filter-btn" onclick="setFilter('validado',this)">Validado y entrado</button>
 </div>
 <div id="tree"></div>
-<div class="toast" id="toast">Email copiado ✓</div>
+<div class="toast" id="toast"></div>
 </div>
-
 <script>
 const RAW=[
 ['Jose Pagan','Jose Fabian Fuentes Rios','Consultor','josefuentes9@planetsolarpr.net'],
@@ -237,7 +238,8 @@ const RAW=[
 ['Yeniel Quiles','Angel Robles','Consultor','yenielquiles17@planetsolarpr.net'],
 ['Jose Cruz Gonzalez','Luis Enrique Cruz','Consultor',''],
 ];
-
+const CHECKS=['db','licencia','permiso','validado'];
+const CHECK_LABELS={db:'Encontrado en Planet DB',licencia:'Licencia Core HubSpot',permiso:'Permiso correcto en HubSpot',validado:'Validado y entrado'};
 const emailMap={},supMap={},rangoMap={};
 RAW.forEach(([n,s,r,e])=>{emailMap[n]=e;supMap[n]=s;rangoMap[n]=r;});
 const children={};
@@ -245,76 +247,66 @@ RAW.forEach(([n,s])=>{if(s){if(!children[s])children[s]=[];children[s].push(n);}
 const supervisors=new Set(RAW.map(r=>r[1]).filter(Boolean));
 document.getElementById('s-teams').textContent=[...supervisors].length;
 let openNodes=new Set(['Luis Enrique Cruz']);
+let currentFilter='all';
 let btnCounter=0;
-
-function showToast(){
-  const t=document.getElementById('toast');
-  t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),1800);
+function getChecks(name){try{return JSON.parse(localStorage.getItem('chk_'+name))||{};}catch(e){return {};}}
+function setCheck(name,field,val){const c=getChecks(name);c[field]=val;localStorage.setItem('chk_'+name,JSON.stringify(c));updateDoneCount();}
+function getCheckCount(name){const c=getChecks(name);return CHECKS.filter(k=>c[k]).length;}
+function updateDoneCount(){document.getElementById('s-done').textContent=RAW.filter(([n])=>getCheckCount(n)===4).length;}
+function passesFilter(name){
+  const c=getChecks(name);const count=CHECKS.filter(k=>c[k]).length;
+  if(currentFilter==='all')return true;
+  if(currentFilter==='none')return count===0;
+  if(currentFilter==='partial')return count>0&&count<4;
+  if(currentFilter==='complete')return count===4;
+  return !!c[currentFilter];
 }
-function copyEmail(event,email,btnId){
-  event.stopPropagation();
-  if(!email)return;
-  navigator.clipboard.writeText(email).then(()=>{
+function hasVisibleDescendant(name){if(passesFilter(name))return true;return(children[name]||[]).some(k=>hasVisibleDescendant(k));}
+function setFilter(f,btn){currentFilter=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderTree();}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity=1;setTimeout(()=>t.style.opacity=0,1800);}
+function copyText(event,text,btnId){
+  event.stopPropagation();if(!text)return;
+  navigator.clipboard.writeText(text).then(()=>{
     const btn=document.getElementById(btnId);
-    if(btn){btn.textContent='Copiado ✓';btn.classList.add('copied');setTimeout(()=>{btn.textContent='Copiar';btn.classList.remove('copied');},2000);}
-    showToast();
+    if(btn){const orig=btn.textContent;btn.textContent='✓';btn.classList.add('copied');setTimeout(()=>{btn.textContent=orig;btn.classList.remove('copied');},2000);}
+    showToast('Copiado ✓');
   });
 }
-function toggleNode(name){
-  if(openNodes.has(name))openNodes.delete(name);
-  else openNodes.add(name);
-  renderTree();
-}
-function expandAll(){
-  RAW.forEach(([n])=>openNodes.add(n));
-  Object.keys(children).forEach(k=>openNodes.add(k));
-  renderTree();
-}
-function collapseAll(){
-  openNodes=new Set(['Luis Enrique Cruz']);
-  renderTree();
-}
+function toggleCheck(event,name,field){event.stopPropagation();const c=getChecks(name);setCheck(name,field,!c[field]);renderTree();}
+function toggleNode(name){if(openNodes.has(name))openNodes.delete(name);else openNodes.add(name);renderTree();}
+function expandAll(){RAW.forEach(([n])=>openNodes.add(n));Object.keys(children).forEach(k=>openNodes.add(k));renderTree();}
+function collapseAll(){openNodes=new Set(['Luis Enrique Cruz']);renderTree();}
+function clearAll(){if(!confirm('¿Seguro que quieres limpiar todos los checks?'))return;RAW.forEach(([n])=>localStorage.removeItem('chk_'+n));updateDoneCount();renderTree();}
 function buildNode(name,level){
+  if(!hasVisibleDescendant(name)&&!passesFilter(name))return'';
   const kids=(children[name]||[]).sort((a,b)=>a.localeCompare(b));
-  const hasKids=kids.length>0;
-  const isOpen=openNodes.has(name);
-  const email=emailMap[name]||'';
-  const rango=rangoMap[name]||'';
+  const hasKids=kids.length>0;const isOpen=openNodes.has(name);
+  const email=emailMap[name]||'';const rango=rangoMap[name]||'';
   const lc='lvl'+Math.min(level,5);
-  const safeName=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-  const btnId='btn_'+(btnCounter++);
-  let html=`<div class="node-wrap">
-    <div class="node-row ${lc}">
-      <div class="toggle-btn" onclick="toggleNode('${safeName}')">${hasKids?(isOpen?'▾':'▸'):'·'}</div>
-      <div class="node-card" onclick="toggleNode('${safeName}')">
-        <div class="node-name">${name}</div>
-        <div class="node-pos">${rango}</div>
-        ${email?`<div class="email-row" onclick="event.stopPropagation()">
-          <span class="email-text">${email}</span>
-          <button class="copy-btn" id="${btnId}" onclick="copyEmail(event,'${email}','${btnId}')">Copiar</button>
-        </div>`:'<div style="font-size:11px;opacity:0.5;margin-top:2px;">sin email</div>'}
+  const sn=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  const nb='nb_'+(btnCounter++);const eb='eb_'+(btnCounter++);
+  const chks=getChecks(name);const cnt=CHECKS.filter(k=>chks[k]).length;
+  let html=`<div class="node-wrap"><div class="node-row ${lc}">
+    <div class="toggle-btn" onclick="toggleNode('${sn}')">${hasKids?(isOpen?'▾':'▸'):'·'}</div>
+    <div class="node-card" onclick="toggleNode('${sn}')">
+      <div class="name-row">
+        <span class="node-name">${name}</span>
+        <button class="copy-btn" id="${nb}" onclick="copyText(event,'${name.replace(/'/g,"\\'")}','${nb}')">Nombre</button>
       </div>
-    </div>`;
-  if(hasKids&&isOpen){
-    html+=`<div class="children">`;
-    kids.forEach(k=>{html+=buildNode(k,level+1);});
-    html+=`</div>`;
-  }
-  html+=`</div>`;
-  return html;
+      <div class="node-pos">${rango}</div>
+      <div class="email-row" onclick="event.stopPropagation()">
+        <span class="email-text" title="${email}">${email||'sin email'}</span>
+        ${email?`<button class="copy-btn" id="${eb}" onclick="copyText(event,'${email}','${eb}')">Email</button>`:''}
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${cnt*25}%"></div></div>
+      <div class="checks" onclick="event.stopPropagation()">
+        ${CHECKS.map(k=>`<label class="check-item"><input type="checkbox" ${chks[k]?'checked':''} onchange="toggleCheck(event,'${sn}','${k}')"><span class="check-label">${CHECK_LABELS[k]}</span></label>`).join('')}
+      </div>
+    </div></div>`;
+  if(hasKids&&isOpen){html+=`<div class="children">`;kids.forEach(k=>{html+=buildNode(k,level+1);});html+=`</div>`;}
+  html+=`</div>`;return html;
 }
-function getChain(name){
-  const chain=[];
-  let cur=supMap[name]||'';
-  const seen=new Set([name]);
-  while(cur&&!seen.has(cur)){
-    chain.push(cur);
-    seen.add(cur);
-    cur=supMap[cur]||'';
-  }
-  return chain;
-}
+function getChain(name){const chain=[];let cur=supMap[name]||'';const seen=new Set([name]);while(cur&&!seen.has(cur)){chain.push(cur);seen.add(cur);cur=supMap[cur]||'';}return chain;}
 function renderTree(){
   btnCounter=0;
   const q=document.getElementById('search').value.toLowerCase().trim();
@@ -322,34 +314,42 @@ function renderTree(){
   if(q){
     const matches=RAW.filter(([n])=>n.toLowerCase().includes(q));
     tree.innerHTML=matches.map(([n])=>{
-      const em=emailMap[n]||'';
-      const id='btn_'+(btnCounter++);
+      const em=emailMap[n]||'';const nb='nb_'+(btnCounter++);const eb='eb_'+(btnCounter++);
+      const chks=getChecks(n);const cnt=CHECKS.filter(k=>chks[k]).length;
       const chain=getChain(n);
-      const chainHtml=chain.length>0?`
-        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #e0e0e0;">
-          <div style="font-size:11px;font-weight:600;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Sus líderes</div>
-          ${chain.map((lider,i)=>{
-            const lem=emailMap[lider]||'';
-            const lid='btn_'+(btnCounter++);
-            return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;background:${i===0?'#E6F1FB':'#f5f5f0'};margin-bottom:4px;">
-              <div style="width:20px;height:20px;border-radius:50%;background:#185FA5;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i+1}</div>
-              <div style="flex:1;">
-                <div style="font-size:12px;font-weight:600;color:#042C53;">${lider}</div>
-                <div style="font-size:11px;color:#666;">${rangoMap[lider]||''}</div>
-                ${lem?`<div style="font-size:10px;font-family:monospace;color:#888;">${lem}</div>`:''}
-              </div>
-              ${lem?`<button id="${lid}" onclick="copyEmail(event,'${lem}','${lid}')" style="font-size:11px;font-weight:600;padding:5px 12px;border-radius:6px;cursor:pointer;border:none;background:#185FA5;color:#fff;">Copiar</button>`:''}
-            </div>`;
-          }).join('')}
-        </div>`:'';
-      return `<div class="search-result" style="flex-direction:column;align-items:stretch;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="flex:1;">
-            <div style="font-size:14px;font-weight:700;color:#042C53;">${n}</div>
-            <div style="font-size:12px;color:#666;margin-top:1px;">${rangoMap[n]||''}</div>
-            <div style="font-size:11px;font-family:monospace;color:#444;margin-top:2px;">${em||'sin email'}</div>
+      const chainHtml=chain.length>0?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid #eee;">
+        <div style="font-size:11px;font-weight:700;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Sus líderes</div>
+        ${chain.map((lider,i)=>{const lem=emailMap[lider]||'';const lid='eb_'+(btnCounter++);
+          return`<div class="lider-row" style="background:${i===0?'#E6F1FB':'#f5f5f0'}">
+            <div class="lider-num">${i+1}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;font-weight:700;color:#042C53;">${lider}</div>
+              <div style="font-size:11px;color:#666;">${rangoMap[lider]||''}</div>
+              ${lem?`<div style="font-size:11px;font-family:monospace;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${lem}</div>`:''}
+            </div>
+            ${lem?`<button id="${lid}" onclick="copyText(event,'${lem}','${lid}')" style="font-size:10px;font-weight:700;padding:4px 9px;border-radius:5px;cursor:pointer;border:none;background:#185FA5;color:#fff;flex-shrink:0;">Email</button>`:''}
+          </div>`;}).join('')}
+      </div>`:'';
+      return`<div class="search-card">
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;">
+              <span style="font-size:14px;font-weight:700;color:#042C53;">${n}</span>
+              <button id="${nb}" onclick="copyText(event,'${n.replace(/'/g,"\\'")}','${nb}')" style="font-size:10px;font-weight:700;padding:4px 9px;border-radius:5px;cursor:pointer;border:none;background:#042C53;color:#E6F1FB;">Nombre</button>
+            </div>
+            <div style="font-size:12px;color:#666;margin-bottom:6px;">${rangoMap[n]||''}</div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;font-family:monospace;color:#444;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;">${em||'sin email'}</span>
+              ${em?`<button id="${eb}" onclick="copyText(event,'${em}','${eb}')" style="font-size:10px;font-weight:700;padding:4px 9px;border-radius:5px;cursor:pointer;border:none;background:#185FA5;color:#fff;flex-shrink:0;">Email</button>`:''}
+            </div>
           </div>
-          ${em?`<button id="${id}" onclick="copyEmail(event,'${em}','${id}')" style="font-size:12px;font-weight:600;padding:7px 16px;border-radius:6px;cursor:pointer;border:none;background:#185FA5;color:#fff;flex-shrink:0;">Copiar</button>`:''}
+        </div>
+        <div style="margin-top:10px;">
+          <div style="height:4px;border-radius:2px;background:#e0e0e0;margin-bottom:8px;overflow:hidden;"><div style="height:100%;background:#1D9E75;width:${cnt*25}%;transition:width 0.3s;"></div></div>
+          ${CHECKS.map(k=>`<label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:3px 0;">
+            <input type="checkbox" ${chks[k]?'checked':''} onchange="toggleCheck(event,'${n.replace(/'/g,"\\'")}','${k}')" style="width:15px;height:15px;cursor:pointer;accent-color:#1D9E75;">
+            <span style="font-size:12px;color:#333;">${CHECK_LABELS[k]}</span>
+          </label>`).join('')}
         </div>
         ${chainHtml}
       </div>`;
@@ -359,6 +359,7 @@ function renderTree(){
   tree.innerHTML=buildNode('Luis Enrique Cruz',0);
 }
 document.getElementById('search').addEventListener('input',renderTree);
+updateDoneCount();
 renderTree();
 </script>
 </body>
