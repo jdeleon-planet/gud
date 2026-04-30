@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Organigrama HubSpot — Planet Solar PR</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f0;padding:20px;color:#1a1a1a;}
+h1{font-size:20px;font-weight:500;color:#042C53;margin-bottom:4px;}
+.subtitle{font-size:13px;color:#888;margin-bottom:16px;}
+.stats{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.stat{background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:10px 16px;font-size:12px;color:#666;}
+.stat span{font-weight:600;color:#042C53;font-size:18px;display:block;}
+.toolbar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.toolbar input{flex:1;min-width:200px;font-size:13px;padding:8px 12px;border:1px solid #ddd;border-radius:8px;outline:none;}
+.toolbar input:focus{border-color:#378ADD;}
+.btn{font-size:12px;padding:8px 14px;border:1px solid #ddd;border-radius:8px;cursor:pointer;background:#fff;color:#333;white-space:nowrap;}
+.btn:hover{background:#f0f0f0;}
+.node-wrap{margin:4px 0;}
+.node-row{display:flex;align-items:flex-start;gap:6px;}
+.toggle-btn{margin-top:10px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#888;flex-shrink:0;cursor:pointer;}
+.node-card{border-radius:10px;padding:10px 14px;min-width:220px;max-width:280px;cursor:pointer;}
+.node-name{font-size:13px;font-weight:600;line-height:1.3;margin-bottom:2px;}
+.node-pos{font-size:11px;margin-bottom:6px;opacity:0.85;}
+.email-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.email-text{font-size:10px;font-family:'Courier New',monospace;opacity:0.9;flex:1;min-width:0;word-break:break-all;}
+.copy-btn{font-size:11px;font-weight:600;padding:5px 12px;border-radius:6px;cursor:pointer;border:none;white-space:nowrap;flex-shrink:0;}
+.copy-btn:hover{opacity:0.85;}
+.copy-btn.copied{background:#1D9E75!important;color:#fff!important;}
+.children{padding-left:28px;border-left:2px solid #ddd;margin-left:18px;margin-top:2px;}
+.lvl0 .node-card{background:#042C53;}
+.lvl0 .node-name{color:#E6F1FB;}
+.lvl0 .node-pos{color:#85B7EB;}
+.lvl0 .email-text{color:#85B7EB;}
+.lvl0 .copy-btn{background:#378ADD;color:#042C53;}
+.lvl1 .node-card{background:#185FA5;}
+.lvl1 .node-name{color:#E6F1FB;}
+.lvl1 .node-pos{color:#B5D4F4;}
+.lvl1 .email-text{color:#B5D4F4;}
+.lvl1 .copy-btn{background:#E6F1FB;color:#042C53;}
+.lvl2 .node-card{background:#378ADD;}
+.lvl2 .node-name{color:#fff;}
+.lvl2 .node-pos{color:#E6F1FB;}
+.lvl2 .email-text{color:#E6F1FB;}
+.lvl2 .copy-btn{background:#042C53;color:#E6F1FB;}
+.lvl3 .node-card{background:#85B7EB;}
+.lvl3 .node-name{color:#042C53;}
+.lvl3 .node-pos{color:#042C53;}
+.lvl3 .email-text{color:#042C53;}
+.lvl3 .copy-btn{background:#042C53;color:#E6F1FB;}
+.lvl4 .node-card{background:#B5D4F4;}
+.lvl4 .node-name{color:#042C53;}
+.lvl4 .node-pos{color:#185FA5;}
+.lvl4 .email-text{color:#185FA5;}
+.lvl4 .copy-btn{background:#185FA5;color:#fff;}
+.lvl5 .node-card{background:#E6F1FB;border:1px solid #85B7EB;}
+.lvl5 .node-name{color:#042C53;}
+.lvl5 .node-pos{color:#185FA5;}
+.lvl5 .email-text{color:#185FA5;}
+.lvl5 .copy-btn{background:#185FA5;color:#fff;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#042C53;color:#E6F1FB;font-size:13px;font-weight:500;padding:8px 20px;border-radius:20px;opacity:0;transition:opacity 0.2s;pointer-events:none;z-index:999;}
+.toast.show{opacity:1;}
+.search-result{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #eee;background:#fff;border-radius:8px;margin-bottom:4px;}
+</style>
+</head>
+<body>
+<h1>Organigrama — Planet Solar PR</h1>
+<p class="subtitle">Jerarquía de equipos para HubSpot</p>
+<div class="stats">
+  <div class="stat"><span id="s-teams">—</span>equipos</div>
+  <div class="stat"><span>151</span>usuarios</div>
+  <div class="stat"><span>6</span>niveles</div>
+</div>
+<div class="toolbar">
+  <input type="text" id="search" placeholder="Buscar por nombre...">
+  <button class="btn" onclick="expandAll()">Expandir todo</button>
+  <button class="btn" onclick="collapseAll()">Colapsar</button>
+</div>
+<div id="tree"></div>
+<div class="toast" id="toast">Email copiado ✓</div>
+
+<script>
+const RAW=[
+['Jose Pagan','Jose Fabian Fuentes Rios','Consultor','josefuentes9@planetsolarpr.net'],
+['Jose Baez Vidro','Alex Vega Lopez','Trainee',''],
+['Abdiel Reyes','Bryan Lopez','Consultor','abdielreyes9@planetsolarpr.net'],
+['Abdiel Vargas','Luis Enrique Cruz','Sub-director','abdielvargas9@planetsolarpr.net'],
+['Abniel Negron','Cristian Rosado','Consultor','abnielnegron10@planetsolarpr.net'],
+['Adalgesa','Taysha De La Torre','Consultor','adalgesarivera6@planetsolarpr.net'],
+['Adrian Crespo','Jomar Crespo','Consultor','adriancrespo7@planetsolarpr.net'],
+['Adrian Ibarry','Elias Valentin','Regional','adrianibarry13@planetsolarpr.net'],
+['Adrian Perez','Ocean Vicente Pagan Cassagnol','Trainee','adrianperez56@planetsolarpr.net'],
+['Alan Alvarez','Manuel Alejandro Alvarez','Consultor','alanalvarez14@planetsolarpr.net'],
+['Alan Torres','Ronaldo De Jesus','Consultor','alantorres47@planetsolarpr.net'],
+['Albert La Torre','Cristian Villarubia','Trainee','albertla30@planetsolarpr.net'],
+['Alberto Redondo','Derek Baez','Consultor','albertoredondo6@planetsolarpr.net'],
+['Alejandro Alameda','Adrian Ibarry','Consultor','alejandroalameda10@planetsolarpr.net'],
+['Alejandro Hernandez','Bryan Lopez','Consultor','alejandrohernandez87@planetsolarpr.net'],
+['Alejandro Torres','Felix Dones','Consultor','alejandrotorres73@planetsolarpr.net'],
+['Alex Vega Lopez','Cristian Villarubia','Consultor','alexvega18@planetsolarpr.net'],
+['Alfredo Mendez','Gabriel Gerardino','Consultor','alfredomendez11@planetsolarpr.net'],
+['Alvin Ortiz','Angel Robles','Consultor','alvinortiz19@planetsolarpr.net'],
+['Amner Rey','Felix Dones','Consultor','amnerrey14@planetsolarpr.net'],
+['Ana Rivera','Lisbeth Rodriguez','Consultor','anarivera18@planetsolarpr.net'],
+['Angel Molina','Jorge Velez','Consultor','aneglmolina65@planetsolarpr.net'],
+['Angel Ocasio','Bryan Lopez','Team Leader','angelocasio9@planetsolarpr.net'],
+['Angel Robles','Elias Valentin','Team Leader','angelrobles14@planetsolarpr.net'],
+['Antron Patton','Camila Perez','Consultor','antronpatton10@planetsolarpr.net'],
+['Armando Diaz','Axel Santos','Consultor','armandodiaz84@planetsolarpr.net'],
+['Axel Santos','Joel Cruz','Consultor','axelsantos16@planetsolarpr.net'],
+['Bomani Richards','Ronaldo De Jesus','Consultor','bomanirichards66@planetsolarpr.net'],
+['Brigitte Ferrer','Cristian Rosado','Trainee','brigitteferrer16@planetsolarpr.net'],
+['Bryan Lopez','Elias Valentin','Director','bryanlopez11@planetsolarpr.net'],
+['Bryan Sierra Cabrera','Carlos Rivera Rodriguez','Trainee','bryansierra11@planetsolarpr.net'],
+['Camila Morales','Ruben Colon','Consultor','camilamorales10@planetsolarpr.net'],
+['Camila Perez','Dionel Medina Uroza','Consultor','camilaperez17@planetsolarpr.net'],
+['Carla Rodriguez','Jeremy Cortes','Trainee','carlarodriguez61@planetsolarpr.net'],
+['Carlos Rivera Rodriguez','Nathaniel Ramos Valentin','Consultor','carlosrivera32@planetsolarpr.net'],
+['Carlos Tapia Alvarez','Luis Quinones','Consultor','carlostapia16@planetsolarpr.net'],
+['Cesar Otero','Luis Enrique Cruz','Presidente','cesarotero20@planetsolarpr.net'],
+['Chris Perez','Victor Santiago','Consultor','chrisperez16@planetsolarpr.net'],
+['Christian Laboy','Bryan Lopez','Consultor','christianlaboy13@planetsolarpr.net'],
+['Ataraxia LLC Hamir Rivera','Bryan Lopez','Consultor','christianrivera19@planetsolarpr.net'],
+['Cristian Diaz','Mario Rosado','Consultor','cristiandiaz50@planetsolarpr.net'],
+['Christian Mariani Cuestell','Richard A. Caban Luciano','Trainee','cristianmariani16@planetsolarpr.net'],
+['Cristian Rosado','Jomar Crespo','Consultor','cristianrosado12@planetsolarpr.net'],
+['Cristian Villarubia','Adrian Ibarry','Team Leader','cristianvillarrubia6@planetsolarpr.net'],
+['Daniel Elias Rodriguez','Luis Quinones','Consultor','danielelias14@planetsolarpr.net'],
+['Daniel Santiago','Mario Retamal','Consultor','danielsantiago89@planetsolarpr.net'],
+['David Santiago','Abdiel Reyes','Consultor','davidsantiago13@planetsolarpr.net'],
+['Dereck Gascot','Abdiel Vargas','Team Leader','dereckgascot8@planetsolarpr.net'],
+['Derek Baez','Jorge Nieves','Sub-director','derekbaez60@planetsolarpr.net'],
+['Diego Sanchez Gonzalez','Jose Fabian Fuentes Rios','Consultor','diegosanchez8@planetsolarpr.net'],
+['Dilan Gines','Sebastian Alvarado','Consultor','dilangines8@planetsolarpr.net'],
+['Dionel Medina Uroza','Elias Valentin','Sub-director','dionelmedina7@planetsolarpr.net'],
+['Dwayne Morales','Abdiel Vargas','Consultor','dwaynemorales86@planetsolarpr.net'],
+['Dylan Hernandez','Alex Jomar Rodriguez','Trainee','dylanhernandez16@planetsolarpr.net'],
+['Edgar Rodriguez Irizarry','Luis Quinones','Consultor','edgarrodriguez13@planetsolarpr.net'],
+['Edgardo Irizarry','Jean Dasta','Consultor','edgardoirizarry14@planetsolarpr.net'],
+['Eduard Melendez','Manuel Santiago','Consultor','eduardomelendez20@planetsolarpr.net'],
+['Eduardo Ortiz','Joseph Salome','Consultor','eduardoortiz16@planetsolarpr.net'],
+['Elias Valentin','Luis Enrique Cruz','Presidente','eliasvalentin48@planetsolarpr.net'],
+['Emanuel Muniz Caraballo','Steven Diaz Torres','Consultor','emanuelmuniz14@planetsolarpr.net'],
+['Erick Mangual','Cristian Villarubia','Trainee','ericmangual63@planetsolarpr.net'],
+['Erick Figueroa','Bryan Lopez','Consultor','erickfigueroa74@planetsolarpr.net'],
+['Eric Seda','Bryan Lopez','Consultor','erickseda19@planetsolarpr.net'],
+['Eriel Cruz','Luis Enrique Cruz','Team Leader','erielcruz9@planetsolarpr.net'],
+['Evan Valentin','Bryan Lopez','Consultor','evanvalentin13@planetsolarpr.net'],
+['Fabian Rivera','Mario Rosado','Consultor','fabianrivera15@planetsolarpr.net'],
+['Felix Dones','Cesar Otero','Presidente','felixdones18@planetsolarpr.net'],
+['Fernando Castro','Dionel Medina Uroza','Consultor','fernandocastro14@planetsolarpr.net'],
+['Francisco J Santiago Mena','Luis Quinones','Consultor','franciscosantiago16@planetsolarpr.net'],
+['Frederick Thomas','Bryan Lopez','Consultor','frederickthomas9@planetsolarpr.net'],
+['Gabriel Berrios','Dionel Medina Uroza','Consultor','gabrielberrios17@planetsolarpr.net'],
+['Gabriel Gerardino','Cesar Otero','Presidente','gabrielgerardino11@planetsolarpr.net'],
+['Gabriel Hernandez','Joseph Salome','Consultor','gabrielhernandez7@planetsolarpr.net'],
+['Gabriel Matos','Bryan Lopez','Consultor','gabrielmatos16@planetsolarpr.net'],
+['Gabriel Nieves','Gabriel Gerardino','Sub-director','gabrielnieves20@planetsolarpr.net'],
+['Gabriel Rivera','Felix Dones','Consultor','gabrielrivera16@planetsolarpr.net'],
+['Gabriel Rodriguez','Manuel Santiago','Consultor','gabrielrodriguez14@planetsolarpr.net'],
+['Gabriel Sandoval','Jose Burgos','Consultor','gabrielsandoval15@planetsolarpr.net'],
+['Gonzalo Ortiz','Jomar Crespo','Consultor','gonzaloortiz12@planetsolarpr.net'],
+['Gustavo Casanova','Bryan Lopez','Consultor','gustavocasanovarivera18@planetsolarpr.net'],
+['Hector Lora','Cesar Otero','Sub-director','hectorlora14@planetsolarpr.net'],
+['Heriberto Gonzalez','Brigitte Ferrer','Consultor','heribertogonzalez14@planetsolarpr.net'],
+['Hyden Gaud Irizarry','Carlos Rivera Rodriguez','Trainee','hydengaud18@planetsolarpr.net'],
+['Ian Gonzalez','Eduard Melendez','Consultor','iangonzalez5@planetsolarpr.net'],
+['Jaime F Cuevas Ruiz','Jose Fabian Fuentes Rios','Consultor','jaimecuevas47@planetsolarpr.net'],
+['Janiel Rivera','Jeremy Cortes','Trainee','janielrivera48@planetsolarpr.net'],
+['Jan Luis Lopez','Eduard Melendez','Consultor','janluislopez16@planetsolarpr.net'],
+['Jared Rodriguez','Jean Dasta','Team Leader','jaredrodriguez9@planetsolarpr.net'],
+['Javier Reyes','Abdiel Reyes','Consultor','javierreyes16@planetsolarpr.net'],
+['Jean Dasta','Luis Enrique Cruz','Regional','jeandasta12@planetsolarpr.net'],
+['Jean Nevarez','Bryan Lopez','Consultor','jeannevarez19@planetsolarpr.net'],
+['Jedan Figueroa Casiano','Alex Vega Lopez','Trainee','jedanfigueroa69@planetsolarpr.net'],
+['Jesus Lopez','Adrian Crespo','Trainee','jesuslopez72@planetsolarpr.net'],
+['Barty Rivera','Abdiel Reyes','Consultor','jesusrivera6@planetsolarpr.net'],
+['Joel Cruz','Sebastian Alvarado','Director','joelcruz28@planetsolarpr.net'],
+['Johnson Fajardo Sepulveda','Manuel Cruz Tirado','Trainee','johnsonfajardo11@planetsolarpr.net'],
+['Johnsuelle Fuentes','Ronaldo De Jesus','Team Leader','johnsuellefuentes15@planetsolarpr.net'],
+['Jomar Crespo','Dionel Medina Uroza','Regional','jomarcrespo18@planetsolarpr.net'],
+['Jonix Rivera Rodriguez','Kenneth Diaz Olan','Consultor','jonixbertorivera11@planetsolarpr.net'],
+['Jorge Carrillo','Felix Dones','Trainee','jorgecarrillo9@planetsolarpr.net'],
+['Jorge Nieves','Felix Dones','Director','jorgenieves79@planetsolarpr.net'],
+['Jorge A Rios Vega','Alex Vega Lopez','Trainee','jorgerios14@planetsolarpr.net'],
+['Jorge Rodriguez Aulet','Luis Quinones','Consultor','jorgerodriguez8@planetsolarpr.net'],
+['Jorge Velez','Sebastian Alvarado','Director','jorgevelez60@planetsolarpr.net'],
+['Jose Burgos','Bryan Lopez','Consultor','joseburgos17@planetsolarpr.net'],
+['Jose Fabian Fuentes Rios','Dionel Medina Uroza','Consultor','josefuentes9@planetsolarpr.net'],
+['Joseph Ortiz','Dionel Medina Uroza','Consultor','josephortiz6@planetsolarpr.net'],
+['Joseph Salome','Angel Ocasio','Consultor','josephsalome9@planetsolarpr.net'],
+['Joshua Gonzalez','Bryan Lopez','Consultor','joshuagonzalez17@planetsolarpr.net'],
+['Joshuan J Nieves Mendez','Jose Fabian Fuentes Rios','Trainee','joshuannieves9@planetsolarpr.net'],
+['Kelvin Carrion','Eric Seda','Consultor','kelvincarrion8@planetsolarpr.net'],
+['Kenneth Campos','Jeremy Cortes','Trainee','kennethcampos12@planetsolarpr.net'],
+['Kenneth Diaz Olan','Steven Diaz Torres','Consultor','kennethdiaz8@planetsolarpr.net'],
+['Kenneth La Santa','Adrian Ibarry','Trainee','kennethla7@planetsolarpr.net'],
+['Liss Silva Silva','Steven Diaz Torres','Consultor','lisssilve14@planetsolarpr.net'],
+['Luis Benitez','Victor Fuentes Torres','Consultor','luisbenitez16@planetsolarpr.net'],
+['Luis Enrique Cruz','','CEO / Compania','luiscruz45@planetsolarpr.net'],
+['Luis Quinones','Elias Valentin','Sub-director','luisquinones8@planetsolarpr.net'],
+['Luis Rivera','Bryan Lopez','Consultor','luisrivera18@planetsolarpr.net'],
+['Manuel Alejandro Alvarez','Dionel Medina Uroza','Team Leader','manuelalvarez11@planetsolarpr.net'],
+['Manuel Cruz Tirado','Cristian Villarubia','Consultor','manuelcruz10@planetsolarpr.net'],
+['Manuel Santiago','Angel Ocasio','Consultor','manuelsantiago12@planetsolarpr.net'],
+['Marck A Pagan Irizarry','Manuel Cruz Tirado','Trainee','marckpagan5@planetsolarpr.net'],
+['Mario Rosado','Gabriel Gerardino','Sub-director','mariomuniz13@planetsolarpr.net'],
+['Mario Retamal','Joel Cruz','Sub-director','marioretamal13@planetsolarpr.net'],
+['Misael Morales','Dionel Medina Uroza','Consultor','misaelmorales10@planetsolarpr.net'],
+['Mugget Garcia','Bryan Lopez','Consultor','muggetgarcia10@planetsolarpr.net'],
+['Natalia Padilla','Cristian Rosado','Consultor','nataliapadilla10@planetsolarpr.net'],
+['Nathaniel Ramos Valentin','Jomar Crespo','Team Leader','nathanielramos13@planetsolarpr.net'],
+['Ocean Vicente Pagan Cassagnol','Alejandro Alameda','Consultor','oceanpagan5@planetsolarpr.net'],
+['Rafael Ramos','Jomar Crespo','Consultor','rafaelramos75@planetsolarpr.net'],
+['Reilnado Acevedo','Chris Perez','Consultor','reinaldoacevedo14@planetsolarpr.net'],
+['Richard A. Caban Luciano','Nathaniel Ramos Valentin','Consultor','richardcaban17@planetsolarpr.net'],
+['Richard Flores','Ronaldo De Jesus','Consultor','richardflores84@planetsolarpr.net'],
+['Roberto Valentin','Alex Jomar Rodriguez','Consultor','robertovalentin16@planetsolarpr.net'],
+['Rodney Parilla','Abdiel Vargas','Consultor','rodneyperrilla15@planetsolarpr.net'],
+['Ronaldo De Jesus','Abdiel Vargas','Regional','ronaldode20@planetsolarpr.net'],
+['Ruben Colon','Luis Enrique Cruz','Consultor','rubencolon15@planetsolarpr.net'],
+['Sebastian Alvarado','Felix Dones','Presidente','sebastianalvarado14@planetsolarpr.net'],
+['Shaneika Santamaria','Mario Rosado','Trainee','shaneikasantamaria12@planetsolarpr.net'],
+['Sonelisse De Jesus','Abdiel Vargas','Consultor','sonelissede22@planetsolarpr.net'],
+['Steven Diaz Torres','Luis Quinones','Team Leader','stevendiaz18@planetsolarpr.net'],
+['Taysha De La Torre','Dionel Medina Uroza','Consultor','tayshade16@planetsolarpr.net'],
+['Victor Fuentes Torres','Johnsuelle Fuentes','Consultor','victorfuentes5@planetsolarpr.net'],
+['Victor Ortiz','Kasandra Garcia','Consultor','victorortiz15@planetsolarpr.net'],
+['Victor Santiago','Bryan Lopez','Consultor','victorsantiago16@planetsolarpr.net'],
+['Yanira Valentin Rivera','Nathaniel Ramos Valentin','Trainee','yaniravalentin16@planetsolarpr.net'],
+['Yarriz Rodriguez','Bryan Lopez','Consultor','yarrizrodriguez11@planetsolarpr.net'],
+['Yeivyan Caraballo','Jose Burgos','Consultor','yeivyancaraballo6@planetsolarpr.net'],
+['Yeniel Quiles','Angel Robles','Consultor','yenielquiles17@planetsolarpr.net'],
+['Jose Cruz Gonzalez','Luis Enrique Cruz','Consultor',''],
+];
+
+const emailMap={},supMap={},rangoMap={};
+RAW.forEach(([n,s,r,e])=>{emailMap[n]=e;supMap[n]=s;rangoMap[n]=r;});
+const children={};
+RAW.forEach(([n,s])=>{if(s){if(!children[s])children[s]=[];children[s].push(n);}});
+const supervisors=new Set(RAW.map(r=>r[1]).filter(Boolean));
+document.getElementById('s-teams').textContent=[...supervisors].length;
+let openNodes=new Set(['Luis Enrique Cruz']);
+let btnCounter=0;
+
+function showToast(){
+  const t=document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1800);
+}
+function copyEmail(event,email,btnId){
+  event.stopPropagation();
+  if(!email)return;
+  navigator.clipboard.writeText(email).then(()=>{
+    const btn=document.getElementById(btnId);
+    if(btn){btn.textContent='Copiado ✓';btn.classList.add('copied');setTimeout(()=>{btn.textContent='Copiar';btn.classList.remove('copied');},2000);}
+    showToast();
+  });
+}
+function toggleNode(name){
+  if(openNodes.has(name))openNodes.delete(name);
+  else openNodes.add(name);
+  renderTree();
+}
+function expandAll(){
+  RAW.forEach(([n])=>openNodes.add(n));
+  Object.keys(children).forEach(k=>openNodes.add(k));
+  renderTree();
+}
+function collapseAll(){
+  openNodes=new Set(['Luis Enrique Cruz']);
+  renderTree();
+}
+function buildNode(name,level){
+  const kids=(children[name]||[]).sort((a,b)=>a.localeCompare(b));
+  const hasKids=kids.length>0;
+  const isOpen=openNodes.has(name);
+  const email=emailMap[name]||'';
+  const rango=rangoMap[name]||'';
+  const lc='lvl'+Math.min(level,5);
+  const safeName=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  const btnId='btn_'+(btnCounter++);
+  let html=`<div class="node-wrap">
+    <div class="node-row ${lc}">
+      <div class="toggle-btn" onclick="toggleNode('${safeName}')">${hasKids?(isOpen?'▾':'▸'):'·'}</div>
+      <div class="node-card" onclick="toggleNode('${safeName}')">
+        <div class="node-name">${name}</div>
+        <div class="node-pos">${rango}</div>
+        ${email?`<div class="email-row" onclick="event.stopPropagation()">
+          <span class="email-text">${email}</span>
+          <button class="copy-btn" id="${btnId}" onclick="copyEmail(event,'${email}','${btnId}')">Copiar</button>
+        </div>`:'<div style="font-size:11px;opacity:0.5;margin-top:2px;">sin email</div>'}
+      </div>
+    </div>`;
+  if(hasKids&&isOpen){
+    html+=`<div class="children">`;
+    kids.forEach(k=>{html+=buildNode(k,level+1);});
+    html+=`</div>`;
+  }
+  html+=`</div>`;
+  return html;
+}
+function renderTree(){
+  btnCounter=0;
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  const tree=document.getElementById('tree');
+  if(q){
+    const matches=RAW.filter(([n])=>n.toLowerCase().includes(q));
+    tree.innerHTML=matches.map(([n])=>{
+      const em=emailMap[n]||'';
+      const id='btn_'+(btnCounter++);
+      return `<div class="search-result">
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;color:#042C53;">${n}</div>
+          <div style="font-size:11px;color:#666;">${rangoMap[n]||''}</div>
+          <div style="font-size:11px;font-family:monospace;color:#444;">${em||'sin email'}</div>
+        </div>
+        ${em?`<button id="${id}" onclick="copyEmail(event,'${em}','${id}')" style="font-size:12px;font-weight:600;padding:7px 16px;border-radius:6px;cursor:pointer;border:none;background:#185FA5;color:#fff;">Copiar</button>`:''}
+      </div>`;
+    }).join('');
+    return;
+  }
+  tree.innerHTML=buildNode('Luis Enrique Cruz',0);
+}
+document.getElementById('search').addEventListener('input',renderTree);
+renderTree();
+</script>
+</body>
+</html>
