@@ -10,9 +10,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .container{max-width:960px;width:100%;}
 h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
 .subtitle{font-size:13px;color:#888;margin-bottom:16px;}
-.stats{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.stats{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
 .stat{background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:8px 14px;font-size:12px;color:#666;}
 .stat span{font-weight:700;color:#042C53;font-size:17px;display:block;}
+.sync-status{font-size:11px;padding:4px 10px;border-radius:20px;margin-left:auto;}
+.sync-ok{background:#e8f5e9;color:#2e7d32;}
+.sync-err{background:#fce4ec;color:#c62828;}
+.sync-loading{background:#fff3e0;color:#e65100;}
 .toolbar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;}
 .toolbar input{flex:1;min-width:200px;font-size:13px;padding:8px 12px;border:1px solid #ddd;border-radius:8px;outline:none;}
 .toolbar input:focus{border-color:#378ADD;}
@@ -23,14 +27,13 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
 .filter-btn{font-size:11px;padding:5px 12px;border:1px solid #ddd;border-radius:20px;cursor:pointer;background:#fff;color:#555;white-space:nowrap;}
 .filter-btn:hover{background:#f0f0f0;}
 .filter-btn.active{background:#042C53;color:#fff;border-color:#042C53;}
-.sync-status{font-size:11px;padding:4px 10px;border-radius:20px;margin-left:auto;}
-.sync-ok{background:#e8f5e9;color:#2e7d32;}
-.sync-err{background:#fce4ec;color:#c62828;}
-.sync-loading{background:#fff3e0;color:#e65100;}
 .node-wrap{margin:4px 0;}
-.node-row{display:flex;align-items:flex-start;gap:6px;}
-.toggle-btn{margin-top:12px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#888;flex-shrink:0;cursor:pointer;}
-.node-card{border-radius:10px;padding:12px 14px;min-width:260px;max-width:340px;cursor:pointer;}
+.node-row{display:flex;align-items:flex-start;gap:8px;}
+.expand-btn{margin-top:8px;min-width:80px;height:26px;display:flex;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:700;border-radius:6px;cursor:pointer;flex-shrink:0;border:2px solid;padding:0 8px;white-space:nowrap;}
+.expand-btn.has-kids-open{background:#042C53;color:#fff;border-color:#042C53;}
+.expand-btn.has-kids-closed{background:#fff;color:#042C53;border-color:#042C53;}
+.expand-btn.no-kids{background:transparent;color:#aaa;border-color:#ddd;cursor:default;font-weight:400;}
+.node-card{border-radius:10px;padding:12px 14px;flex:1;max-width:320px;cursor:pointer;}
 .name-row{display:flex;align-items:center;gap:6px;margin-bottom:2px;}
 .node-name{font-size:13px;font-weight:700;line-height:1.3;flex:1;}
 .node-pos{font-size:11px;margin-bottom:8px;opacity:0.85;}
@@ -45,7 +48,9 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
 .check-label{font-size:11px;user-select:none;}
 .progress-bar{height:4px;border-radius:2px;background:rgba(255,255,255,0.3);margin-bottom:6px;overflow:hidden;}
 .progress-fill{height:100%;background:#1D9E75;transition:width 0.3s;}
-.children{padding-left:28px;border-left:2px solid #ddd;margin-left:18px;margin-top:2px;}
+.children{padding-left:36px;border-left:2px solid #ddd;margin-left:40px;margin-top:4px;}
+.dimmed .node-card{opacity:0.4;}
+.dimmed .expand-btn{opacity:0.4;}
 .lvl0 .node-card{background:#042C53;}.lvl0 .node-name{color:#E6F1FB;}.lvl0 .node-pos{color:#85B7EB;}.lvl0 .email-text{color:#85B7EB;}.lvl0 .copy-btn{background:#378ADD;color:#042C53;}.lvl0 .check-label{color:#B5D4F4;}.lvl0 .checks{border-top-color:rgba(255,255,255,0.15);}.lvl0 .progress-bar{background:rgba(255,255,255,0.15);}
 .lvl1 .node-card{background:#185FA5;}.lvl1 .node-name{color:#E6F1FB;}.lvl1 .node-pos{color:#B5D4F4;}.lvl1 .email-text{color:#B5D4F4;}.lvl1 .copy-btn{background:#E6F1FB;color:#042C53;}.lvl1 .check-label{color:#E6F1FB;}.lvl1 .checks{border-top-color:rgba(255,255,255,0.2);}.lvl1 .progress-bar{background:rgba(255,255,255,0.2);}
 .lvl2 .node-card{background:#378ADD;}.lvl2 .node-name{color:#fff;}.lvl2 .node-pos{color:#E6F1FB;}.lvl2 .email-text{color:#E6F1FB;}.lvl2 .copy-btn{background:#042C53;color:#E6F1FB;}.lvl2 .check-label{color:#fff;}.lvl2 .checks{border-top-color:rgba(255,255,255,0.25);}.lvl2 .progress-bar{background:rgba(255,255,255,0.25);}
@@ -92,7 +97,7 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDAQuaSxlLYn0sEUkjdx70QW2CFQAv7dkQ",
@@ -274,16 +279,14 @@ let currentFilter='all';
 let btnCounter=0;
 let checksCache={};
 
-function setSyncStatus(status){
+function setSyncStatus(s){
   const el=document.getElementById('sync-status');
-  if(status==='ok'){el.textContent='✓ Sincronizado';el.className='sync-status sync-ok';}
-  else if(status==='err'){el.textContent='✗ Sin conexión';el.className='sync-status sync-err';}
+  if(s==='ok'){el.textContent='✓ Sincronizado';el.className='sync-status sync-ok';}
+  else if(s==='err'){el.textContent='✗ Sin conexión';el.className='sync-status sync-err';}
   else{el.textContent='Sincronizando...';el.className='sync-status sync-loading';}
 }
 
-// Listen for real-time updates from Firestore
-const colRef = collection(db,'checks');
-onSnapshot(colRef,(snapshot)=>{
+onSnapshot(collection(db,'checks'),(snapshot)=>{
   snapshot.docChanges().forEach(change=>{
     const name=change.doc.id.replace(/_/g,' ');
     if(change.type==='removed') delete checksCache[name];
@@ -292,43 +295,42 @@ onSnapshot(colRef,(snapshot)=>{
   setSyncStatus('ok');
   updateDoneCount();
   renderTree();
-},(err)=>{
-  console.error(err);
-  setSyncStatus('err');
-});
+},(err)=>{console.error(err);setSyncStatus('err');});
 
 function getChecks(name){return checksCache[name]||{};}
-
 async function setCheck(name,field,val){
   setSyncStatus('loading');
   const key=name.replace(/ /g,'_');
-  const cur=getChecks(name);
+  const cur={...getChecks(name)};
   cur[field]=val;
   checksCache[name]=cur;
-  try{
-    await setDoc(doc(db,'checks',key),cur);
-    setSyncStatus('ok');
-  }catch(e){
-    console.error(e);
-    setSyncStatus('err');
-  }
+  try{await setDoc(doc(db,'checks',key),cur);setSyncStatus('ok');}
+  catch(e){console.error(e);setSyncStatus('err');}
 }
-
-function getCheckCount(name){const c=getChecks(name);return CHECKS.filter(k=>c[k]).length;}
+function getCheckCount(name){return CHECKS.filter(k=>getChecks(name)[k]).length;}
 function updateDoneCount(){document.getElementById('s-done').textContent=RAW.filter(([n])=>getCheckCount(n)===4).length;}
 
+// Filter: show node if it passes, dim it if it doesn't but has matching descendants
 function passesFilter(name){
-  const c=getChecks(name);const count=CHECKS.filter(k=>c[k]).length;
-  if(currentFilter==='all')return true;
-  if(currentFilter==='none')return count===0;
-  if(currentFilter==='partial')return count>0&&count<4;
-  if(currentFilter==='complete')return count===4;
+  const c=getChecks(name);const cnt=CHECKS.filter(k=>c[k]).length;
+  if(currentFilter==='all') return true;
+  if(currentFilter==='none') return cnt===0;
+  if(currentFilter==='partial') return cnt>0&&cnt<4;
+  if(currentFilter==='complete') return cnt===4;
   return !!c[currentFilter];
 }
-function hasVisibleDescendant(name){if(passesFilter(name))return true;return(children[name]||[]).some(k=>hasVisibleDescendant(k));}
-function setFilter(f,btn){currentFilter=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderTree();}
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity=1;setTimeout(()=>t.style.opacity=0,1800);}
+function hasMatchingDescendant(name){
+  if(passesFilter(name)) return true;
+  return (children[name]||[]).some(k=>hasMatchingDescendant(k));
+}
 
+function setFilter(f,btn){
+  currentFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTree();
+}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity=1;setTimeout(()=>t.style.opacity=0,1800);}
 function copyText(event,text,btnId){
   event.stopPropagation();if(!text)return;
   navigator.clipboard.writeText(text).then(()=>{
@@ -337,60 +339,72 @@ function copyText(event,text,btnId){
     showToast('Copiado ✓');
   });
 }
-
 function toggleCheck(event,name,field){
   event.stopPropagation();
   const c=getChecks(name);
   setCheck(name,field,!c[field]);
   renderTree();
 }
-
 function toggleNode(name){if(openNodes.has(name))openNodes.delete(name);else openNodes.add(name);renderTree();}
 function expandAll(){RAW.forEach(([n])=>openNodes.add(n));Object.keys(children).forEach(k=>openNodes.add(k));renderTree();}
 function collapseAll(){openNodes=new Set(['Luis Enrique Cruz']);renderTree();}
-
 async function clearAll(){
   if(!confirm('¿Seguro que quieres limpiar todos los checks?'))return;
   setSyncStatus('loading');
-  const promises=RAW.map(([n])=>{
-    const key=n.replace(/ /g,'_');
-    return setDoc(doc(db,'checks',key),{});
-  });
-  await Promise.all(promises);
-  checksCache={};
-  updateDoneCount();
-  renderTree();
-  setSyncStatus('ok');
+  await Promise.all(RAW.map(([n])=>setDoc(doc(db,'checks',n.replace(/ /g,'_')),{})));
+  checksCache={};updateDoneCount();renderTree();setSyncStatus('ok');
 }
 
 function buildNode(name,level){
-  if(!hasVisibleDescendant(name)&&!passesFilter(name))return'';
+  // Skip entirely if no match at all
+  if(!hasMatchingDescendant(name)) return '';
   const kids=(children[name]||[]).sort((a,b)=>a.localeCompare(b));
-  const hasKids=kids.length>0;const isOpen=openNodes.has(name);
-  const email=emailMap[name]||'';const rango=rangoMap[name]||'';
+  const hasKids=kids.length>0;
+  const isOpen=openNodes.has(name);
+  const passes=passesFilter(name);
+  const email=emailMap[name]||'';
+  const rango=rangoMap[name]||'';
   const lc='lvl'+Math.min(level,5);
   const sn=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-  const nb='nb_'+(btnCounter++);const eb='eb_'+(btnCounter++);
-  const chks=getChecks(name);const cnt=CHECKS.filter(k=>chks[k]).length;
-  let html=`<div class="node-wrap"><div class="node-row ${lc}">
-    <div class="toggle-btn" onclick="toggleNode('${sn}')">${hasKids?(isOpen?'▾':'▸'):'·'}</div>
-    <div class="node-card" onclick="toggleNode('${sn}')">
-      <div class="name-row">
-        <span class="node-name">${name}</span>
-        <button class="copy-btn" id="${nb}" onclick="copyText(event,'${name.replace(/'/g,"\\'")}','${nb}')">Nombre</button>
+  const nb='nb_'+(btnCounter++);
+  const eb='eb_'+(btnCounter++);
+  const chks=getChecks(name);
+  const cnt=CHECKS.filter(k=>chks[k]).length;
+  const kidCount=(children[name]||[]).length;
+
+  // Expand button style
+  let expandClass='no-kids';
+  let expandLabel='&nbsp;&nbsp;•&nbsp;&nbsp;';
+  if(hasKids&&isOpen){expandClass='has-kids-open';expandLabel=`− ${kidCount} miembro${kidCount!==1?'s':''}`;}
+  else if(hasKids&&!isOpen){expandClass='has-kids-closed';expandLabel=`+ ${kidCount} miembro${kidCount!==1?'s':''}`;}
+
+  let html=`<div class="node-wrap ${passes?'':'dimmed'}">
+    <div class="node-row ${lc}">
+      <button class="expand-btn ${expandClass}" onclick="toggleNode('${sn}')">${expandLabel}</button>
+      <div class="node-card" onclick="toggleNode('${sn}')">
+        <div class="name-row">
+          <span class="node-name">${name}</span>
+          <button class="copy-btn" id="${nb}" onclick="copyText(event,'${name.replace(/'/g,"\\'")}','${nb}')">Nombre</button>
+        </div>
+        <div class="node-pos">${rango}</div>
+        <div class="email-row" onclick="event.stopPropagation()">
+          <span class="email-text" title="${email}">${email||'sin email'}</span>
+          ${email?`<button class="copy-btn" id="${eb}" onclick="copyText(event,'${email}','${eb}')">Email</button>`:''}
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${cnt*25}%"></div></div>
+        <div class="checks" onclick="event.stopPropagation()">
+          ${CHECKS.map(k=>`<label class="check-item"><input type="checkbox" ${chks[k]?'checked':''} onchange="toggleCheck(event,'${sn}','${k}')"><span class="check-label">${CHECK_LABELS[k]}</span></label>`).join('')}
+        </div>
       </div>
-      <div class="node-pos">${rango}</div>
-      <div class="email-row" onclick="event.stopPropagation()">
-        <span class="email-text" title="${email}">${email||'sin email'}</span>
-        ${email?`<button class="copy-btn" id="${eb}" onclick="copyText(event,'${email}','${eb}')">Email</button>`:''}
-      </div>
-      <div class="progress-bar"><div class="progress-fill" style="width:${cnt*25}%"></div></div>
-      <div class="checks" onclick="event.stopPropagation()">
-        ${CHECKS.map(k=>`<label class="check-item"><input type="checkbox" ${chks[k]?'checked':''} onchange="toggleCheck(event,'${sn}','${k}')"><span class="check-label">${CHECK_LABELS[k]}</span></label>`).join('')}
-      </div>
-    </div></div>`;
-  if(hasKids&&isOpen){html+=`<div class="children">`;kids.forEach(k=>{html+=buildNode(k,level+1);});html+=`</div>`;}
-  html+=`</div>`;return html;
+    </div>`;
+
+  if(hasKids&&isOpen){
+    html+=`<div class="children">`;
+    kids.forEach(k=>{html+=buildNode(k,level+1);});
+    html+=`</div>`;
+  }
+  html+=`</div>`;
+  return html;
 }
 
 function getChain(name){const chain=[];let cur=supMap[name]||'';const seen=new Set([name]);while(cur&&!seen.has(cur)){chain.push(cur);seen.add(cur);cur=supMap[cur]||'';}return chain;}
