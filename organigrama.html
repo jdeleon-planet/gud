@@ -159,7 +159,7 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDAQuaSxlLYn0sEUkjdx70QW2CFQAv7dkQ",
@@ -218,274 +218,13 @@ async function addLog(msg, rawName=''){
   catch(e){ console.error(e); }
 }
 
-// Sheet sync
-async function syncSheet(){
-  const btn=document.querySelector('.sheet-btn');
-  btn.textContent='⏳ Cargando...';btn.disabled=true;
-  try{
-    const res=await fetch(SHEET_URL);
-    const text=await res.text();
-    const rows=text.trim().split('\n').map(r=>r.split(','));
-    const headers=rows[0].map(h=>h.trim().replace(/"/g,'').toLowerCase());
-    // Find column indexes
-    const iVal=headers.findIndex(h=>h.includes('validado'));
-    const iName=headers.findIndex(h=>h.includes('nombre completo'));
-    const iSup=headers.findIndex(h=>h.includes('supervisor'));
-    const iRango=headers.findIndex(h=>h.includes('rango'));
-    const iEmail=headers.findIndex(h=>h.includes('corporateemail'));
-    if(iName===-1||iSup===-1){throw new Error('Columnas no encontradas');}
-
-    // Parse only TRUE rows
-    const sheetData={};
-    rows.slice(1).forEach(r=>{
-      const val=(r[iVal]||'').trim().replace(/"/g,'').toUpperCase();
-      if(val!=='TRUE') return;
-      const name=(r[iName]||'').trim().replace(/"/g,'');
-      if(!name) return;
-      sheetData[name]={
-        name,
-        sup:(r[iSup]||'').trim().replace(/"/g,''),
-        rango:(r[iRango]||'').trim().replace(/"/g,''),
-        email:iEmail>=0?(r[iEmail]||'').trim().replace(/"/g,''):'',
-      };
-    });
-
-    // Compare with current RAW
-    const currentMap={};
-    RAW.forEach(([n,s,r,e])=>currentMap[n]={name:n,sup:s,rango:r,email:e});
-
-    const logs=[];
-    let added=0,removed=0,changed=0;
-
-    // Find added
-    Object.keys(sheetData).forEach(name=>{
-      if(!currentMap[name]){
-        added++;
-        const d=sheetData[name];
-        RAW.push([d.name,d.sup,d.rango,d.email]);
-        emailMap[d.name]=d.email;
-        supMap[d.name]=d.sup;
-        rangoMap[d.name]=d.rango;
-        if(d.sup){if(!children[d.sup])children[d.sup]=[];if(!children[d.sup].includes(d.name))children[d.sup].push(d.name);}
-        logs.push({msg:`<span class="log-add">➕ Agregado:</span> ${name}`,rawName:name});
-      } else {
-        // Check for changes
-        const cur=currentMap[name];
-        const changes=[];
-        if(cur.rango!==sheetData[name].rango) changes.push(`Rango: ${cur.rango}→${sheetData[name].rango}`);
-        if(cur.email!==sheetData[name].email) changes.push(`Email actualizado`);
-        if(cur.sup!==sheetData[name].sup) changes.push(`Supervisor: ${cur.sup}→${sheetData[name].sup}`);
-        if(changes.length>0){
-          changed++;
-          // Update RAW
-          const idx=RAW.findIndex(r=>r[0]===name);
-          if(idx>=0){RAW[idx]=[sheetData[name].name,sheetData[name].sup,sheetData[name].rango,sheetData[name].email];}
-          emailMap[name]=sheetData[name].email;
-          supMap[name]=sheetData[name].sup;
-          rangoMap[name]=sheetData[name].rango;
-          logs.push({msg:`<span class="log-change">✏️ Cambio:</span> ${name} — ${changes.join(', ')}`,rawName:name});
-        }
-      }
-    });
-
-    // Find removed
-    Object.keys(currentMap).forEach(name=>{
-      if(!sheetData[name]&&name!=='Luis Enrique Cruz'){
-        removed++;
-        const idx=RAW.findIndex(r=>r[0]===name);
-        if(idx>=0) RAW.splice(idx,1);
-        delete emailMap[name];delete supMap[name];delete rangoMap[name];
-        Object.keys(children).forEach(k=>{children[k]=children[k].filter(c=>c!==name);});
-        logs.push({msg:`<span class="log-remove">❌ Removido:</span> ${name}`,rawName:name});
-      }
-    });
-
-    // Rebuild children
-    Object.keys(children).forEach(k=>children[k]=[]);
-    RAW.forEach(([n,s])=>{if(s){if(!children[s])children[s]=[];if(!children[s].includes(n))children[s].push(n);}});
-
-    // Update stats
-    const supervisors=new Set(RAW.map(r=>r[1]).filter(Boolean));
-    document.getElementById('s-teams').textContent=[...supervisors].length;
-    document.querySelector('.stats .stat:nth-child(2) span').textContent=RAW.length;
-
-    const summary=`🔄 Sheet sincronizado — ${added} agregado${added!==1?'s':''}, ${removed} removido${removed!==1?'s':''}, ${changed} cambio${changed!==1?'s':''}`;
-    logs.unshift({msg:`<span class="log-sync">${summary}</span>`,rawName:''});
-    for(const entry of logs) await addLog(entry.msg, entry.rawName);
-
-    showToast(`✓ ${added} agregados, ${removed} removidos, ${changed} cambios`);
-    renderTree();
-  }catch(e){
-    console.error(e);
-    showToast('Error al leer el Sheet');
-    await addLog(`<span class="log-remove">⚠️ Error al sincronizar Sheet: ${e.message}</span>`,'');
-  }
-  btn.textContent='🔄 Actualizar desde Sheet';btn.disabled=false;
-}
-window.syncSheet=syncSheet;
-
-const RAW=[
-['Jose Pagan','Jose Fabian Fuentes Rios','Consultor','josefuentes9@planetsolarpr.net'],
-['Jose Baez Vidro','Alex Vega Lopez','Trainee',''],
-['Abdiel Reyes','Bryan Lopez','Consultor','abdielreyes9@planetsolarpr.net'],
-['Abdiel Vargas','Luis Enrique Cruz','Sub-director','abdielvargas9@planetsolarpr.net'],
-['Abniel Negron','Cristian Rosado','Consultor','abnielnegron10@planetsolarpr.net'],
-['Adalgesa','Taysha De La Torre','Consultor','adalgesarivera6@planetsolarpr.net'],
-['Adrian Crespo','Jomar Crespo','Consultor','adriancrespo7@planetsolarpr.net'],
-['Adrian Ibarry','Elias Valentin','Regional','adrianibarry13@planetsolarpr.net'],
-['Adrian Perez','Ocean Vicente Pagan Cassagnol','Trainee','adrianperez56@planetsolarpr.net'],
-['Alan Alvarez','Manuel Alejandro Alvarez','Consultor','alanalvarez14@planetsolarpr.net'],
-['Alan Torres','Ronaldo De Jesus','Consultor','alantorres47@planetsolarpr.net'],
-['Albert La Torre','Cristian Villarubia','Trainee','albertla30@planetsolarpr.net'],
-['Alberto Redondo','Derek Baez','Consultor','albertoredondo6@planetsolarpr.net'],
-['Alejandro Alameda','Adrian Ibarry','Consultor','alejandroalameda10@planetsolarpr.net'],
-['Alejandro Hernandez','Bryan Lopez','Consultor','alejandrohernandez87@planetsolarpr.net'],
-['Alejandro Torres','Felix Dones','Consultor','alejandrotorres73@planetsolarpr.net'],
-['Alex Vega Lopez','Cristian Villarubia','Consultor','alexvega18@planetsolarpr.net'],
-['Alfredo Mendez','Gabriel Gerardino','Consultor','alfredomendez11@planetsolarpr.net'],
-['Alvin Ortiz','Angel Robles','Consultor','alvinortiz19@planetsolarpr.net'],
-['Amner Rey','Felix Dones','Consultor','amnerrey14@planetsolarpr.net'],
-['Ana Rivera','Lisbeth Rodriguez','Consultor','anarivera18@planetsolarpr.net'],
-['Angel Molina','Jorge Velez','Consultor','aneglmolina65@planetsolarpr.net'],
-['Angel Ocasio','Bryan Lopez','Team Leader','angelocasio9@planetsolarpr.net'],
-['Angel Robles','Elias Valentin','Team Leader','angelrobles14@planetsolarpr.net'],
-['Antron Patton','Camila Perez','Consultor','antronpatton10@planetsolarpr.net'],
-['Armando Diaz','Axel Santos','Consultor','armandodiaz84@planetsolarpr.net'],
-['Axel Santos','Joel Cruz','Consultor','axelsantos16@planetsolarpr.net'],
-['Bomani Richards','Ronaldo De Jesus','Consultor','bomanirichards66@planetsolarpr.net'],
-['Brigitte Ferrer','Cristian Rosado','Trainee','brigitteferrer16@planetsolarpr.net'],
-['Bryan Lopez','Elias Valentin','Director','bryanlopez11@planetsolarpr.net'],
-['Bryan Sierra Cabrera','Carlos Rivera Rodriguez','Trainee','bryansierra11@planetsolarpr.net'],
-['Camila Morales','Ruben Colon','Consultor','camilamorales10@planetsolarpr.net'],
-['Camila Perez','Dionel Medina Uroza','Consultor','camilaperez17@planetsolarpr.net'],
-['Carla Rodriguez','Jeremy Cortes','Trainee','carlarodriguez61@planetsolarpr.net'],
-['Carlos Rivera Rodriguez','Nathaniel Ramos Valentin','Consultor','carlosrivera32@planetsolarpr.net'],
-['Carlos Tapia Alvarez','Luis Quinones','Consultor','carlostapia16@planetsolarpr.net'],
-['Cesar Otero','Luis Enrique Cruz','Presidente','cesarotero20@planetsolarpr.net'],
-['Chris Perez','Victor Santiago','Consultor','chrisperez16@planetsolarpr.net'],
-['Christian Laboy','Bryan Lopez','Consultor','christianlaboy13@planetsolarpr.net'],
-['Ataraxia LLC Hamir Rivera','Bryan Lopez','Consultor','christianrivera19@planetsolarpr.net'],
-['Cristian Diaz','Mario Rosado','Consultor','cristiandiaz50@planetsolarpr.net'],
-['Christian Mariani Cuestell','Richard A. Caban Luciano','Trainee','cristianmariani16@planetsolarpr.net'],
-['Cristian Rosado','Jomar Crespo','Consultor','cristianrosado12@planetsolarpr.net'],
-['Cristian Villarubia','Adrian Ibarry','Team Leader','cristianvillarrubia6@planetsolarpr.net'],
-['Daniel Elias Rodriguez','Luis Quinones','Consultor','danielelias14@planetsolarpr.net'],
-['Daniel Santiago','Mario Retamal','Consultor','danielsantiago89@planetsolarpr.net'],
-['David Santiago','Abdiel Reyes','Consultor','davidsantiago13@planetsolarpr.net'],
-['Dereck Gascot','Abdiel Vargas','Team Leader','dereckgascot8@planetsolarpr.net'],
-['Derek Baez','Jorge Nieves','Sub-director','derekbaez60@planetsolarpr.net'],
-['Diego Sanchez Gonzalez','Jose Fabian Fuentes Rios','Consultor','diegosanchez8@planetsolarpr.net'],
-['Dilan Gines','Sebastian Alvarado','Consultor','dilangines8@planetsolarpr.net'],
-['Dionel Medina Uroza','Elias Valentin','Sub-director','dionelmedina7@planetsolarpr.net'],
-['Dwayne Morales','Abdiel Vargas','Consultor','dwaynemorales86@planetsolarpr.net'],
-['Dylan Hernandez','Alex Jomar Rodriguez','Trainee','dylanhernandez16@planetsolarpr.net'],
-['Edgar Rodriguez Irizarry','Luis Quinones','Consultor','edgarrodriguez13@planetsolarpr.net'],
-['Edgardo Irizarry','Jean Dasta','Consultor','edgardoirizarry14@planetsolarpr.net'],
-['Eduard Melendez','Manuel Santiago','Consultor','eduardomelendez20@planetsolarpr.net'],
-['Eduardo Ortiz','Joseph Salome','Consultor','eduardoortiz16@planetsolarpr.net'],
-['Elias Valentin','Luis Enrique Cruz','Presidente','eliasvalentin48@planetsolarpr.net'],
-['Emanuel Muniz Caraballo','Steven Diaz Torres','Consultor','emanuelmuniz14@planetsolarpr.net'],
-['Erick Mangual','Cristian Villarubia','Trainee','ericmangual63@planetsolarpr.net'],
-['Erick Figueroa','Bryan Lopez','Consultor','erickfigueroa74@planetsolarpr.net'],
-['Eric Seda','Bryan Lopez','Consultor','erickseda19@planetsolarpr.net'],
-['Eriel Cruz','Luis Enrique Cruz','Team Leader','erielcruz9@planetsolarpr.net'],
-['Evan Valentin','Bryan Lopez','Consultor','evanvalentin13@planetsolarpr.net'],
-['Fabian Rivera','Mario Rosado','Consultor','fabianrivera15@planetsolarpr.net'],
-['Felix Dones','Cesar Otero','Presidente','felixdones18@planetsolarpr.net'],
-['Fernando Castro','Dionel Medina Uroza','Consultor','fernandocastro14@planetsolarpr.net'],
-['Francisco J Santiago Mena','Luis Quinones','Consultor','franciscosantiago16@planetsolarpr.net'],
-['Frederick Thomas','Bryan Lopez','Consultor','frederickthomas9@planetsolarpr.net'],
-['Gabriel Berrios','Dionel Medina Uroza','Consultor','gabrielberrios17@planetsolarpr.net'],
-['Gabriel Gerardino','Cesar Otero','Presidente','gabrielgerardino11@planetsolarpr.net'],
-['Gabriel Hernandez','Joseph Salome','Consultor','gabrielhernandez7@planetsolarpr.net'],
-['Gabriel Matos','Bryan Lopez','Consultor','gabrielmatos16@planetsolarpr.net'],
-['Gabriel Nieves','Gabriel Gerardino','Sub-director','gabrielnieves20@planetsolarpr.net'],
-['Gabriel Rivera','Felix Dones','Consultor','gabrielrivera16@planetsolarpr.net'],
-['Gabriel Rodriguez','Manuel Santiago','Consultor','gabrielrodriguez14@planetsolarpr.net'],
-['Gabriel Sandoval','Jose Burgos','Consultor','gabrielsandoval15@planetsolarpr.net'],
-['Gonzalo Ortiz','Jomar Crespo','Consultor','gonzaloortiz12@planetsolarpr.net'],
-['Gustavo Casanova','Bryan Lopez','Consultor','gustavocasanovarivera18@planetsolarpr.net'],
-['Hector Lora','Cesar Otero','Sub-director','hectorlora14@planetsolarpr.net'],
-['Heriberto Gonzalez','Brigitte Ferrer','Consultor','heribertogonzalez14@planetsolarpr.net'],
-['Hyden Gaud Irizarry','Carlos Rivera Rodriguez','Trainee','hydengaud18@planetsolarpr.net'],
-['Ian Gonzalez','Eduard Melendez','Consultor','iangonzalez5@planetsolarpr.net'],
-['Jaime F Cuevas Ruiz','Jose Fabian Fuentes Rios','Consultor','jaimecuevas47@planetsolarpr.net'],
-['Janiel Rivera','Jeremy Cortes','Trainee','janielrivera48@planetsolarpr.net'],
-['Jan Luis Lopez','Eduard Melendez','Consultor','janluislopez16@planetsolarpr.net'],
-['Jared Rodriguez','Jean Dasta','Team Leader','jaredrodriguez9@planetsolarpr.net'],
-['Javier Reyes','Abdiel Reyes','Consultor','javierreyes16@planetsolarpr.net'],
-['Jean Dasta','Luis Enrique Cruz','Regional','jeandasta12@planetsolarpr.net'],
-['Jean Nevarez','Bryan Lopez','Consultor','jeannevarez19@planetsolarpr.net'],
-['Jedan Figueroa Casiano','Alex Vega Lopez','Trainee','jedanfigueroa69@planetsolarpr.net'],
-['Jesus Lopez','Adrian Crespo','Trainee','jesuslopez72@planetsolarpr.net'],
-['Barty Rivera','Abdiel Reyes','Consultor','jesusrivera6@planetsolarpr.net'],
-['Joel Cruz','Sebastian Alvarado','Director','joelcruz28@planetsolarpr.net'],
-['Johnson Fajardo Sepulveda','Manuel Cruz Tirado','Trainee','johnsonfajardo11@planetsolarpr.net'],
-['Johnsuelle Fuentes','Ronaldo De Jesus','Team Leader','johnsuellefuentes15@planetsolarpr.net'],
-['Jomar Crespo','Dionel Medina Uroza','Regional','jomarcrespo18@planetsolarpr.net'],
-['Jonix Rivera Rodriguez','Kenneth Diaz Olan','Consultor','jonixbertorivera11@planetsolarpr.net'],
-['Jorge Carrillo','Felix Dones','Trainee','jorgecarrillo9@planetsolarpr.net'],
-['Jorge Nieves','Felix Dones','Director','jorgenieves79@planetsolarpr.net'],
-['Jorge A Rios Vega','Alex Vega Lopez','Trainee','jorgerios14@planetsolarpr.net'],
-['Jorge Rodriguez Aulet','Luis Quinones','Consultor','jorgerodriguez8@planetsolarpr.net'],
-['Jorge Velez','Sebastian Alvarado','Director','jorgevelez60@planetsolarpr.net'],
-['Jose Burgos','Bryan Lopez','Consultor','joseburgos17@planetsolarpr.net'],
-['Jose Fabian Fuentes Rios','Dionel Medina Uroza','Consultor','josefuentes9@planetsolarpr.net'],
-['Joseph Ortiz','Dionel Medina Uroza','Consultor','josephortiz6@planetsolarpr.net'],
-['Joseph Salome','Angel Ocasio','Consultor','josephsalome9@planetsolarpr.net'],
-['Joshua Gonzalez','Bryan Lopez','Consultor','joshuagonzalez17@planetsolarpr.net'],
-['Joshuan J Nieves Mendez','Jose Fabian Fuentes Rios','Trainee','joshuannieves9@planetsolarpr.net'],
-['Kelvin Carrion','Eric Seda','Consultor','kelvincarrion8@planetsolarpr.net'],
-['Kenneth Campos','Jeremy Cortes','Trainee','kennethcampos12@planetsolarpr.net'],
-['Kenneth Diaz Olan','Steven Diaz Torres','Consultor','kennethdiaz8@planetsolarpr.net'],
-['Kenneth La Santa','Adrian Ibarry','Trainee','kennethla7@planetsolarpr.net'],
-['Liss Silva Silva','Steven Diaz Torres','Consultor','lisssilve14@planetsolarpr.net'],
-['Luis Benitez','Victor Fuentes Torres','Consultor','luisbenitez16@planetsolarpr.net'],
-['Luis Enrique Cruz','','CEO / Compania','luiscruz45@planetsolarpr.net'],
-['Luis Quinones','Elias Valentin','Sub-director','luisquinones8@planetsolarpr.net'],
-['Luis Rivera','Bryan Lopez','Consultor','luisrivera18@planetsolarpr.net'],
-['Manuel Alejandro Alvarez','Dionel Medina Uroza','Team Leader','manuelalvarez11@planetsolarpr.net'],
-['Manuel Cruz Tirado','Cristian Villarubia','Consultor','manuelcruz10@planetsolarpr.net'],
-['Manuel Santiago','Angel Ocasio','Consultor','manuelsantiago12@planetsolarpr.net'],
-['Marck A Pagan Irizarry','Manuel Cruz Tirado','Trainee','marckpagan5@planetsolarpr.net'],
-['Mario Rosado','Gabriel Gerardino','Sub-director','mariomuniz13@planetsolarpr.net'],
-['Mario Retamal','Joel Cruz','Sub-director','marioretamal13@planetsolarpr.net'],
-['Misael Morales','Dionel Medina Uroza','Consultor','misaelmorales10@planetsolarpr.net'],
-['Mugget Garcia','Bryan Lopez','Consultor','muggetgarcia10@planetsolarpr.net'],
-['Natalia Padilla','Cristian Rosado','Consultor','nataliapadilla10@planetsolarpr.net'],
-['Nathaniel Ramos Valentin','Jomar Crespo','Team Leader','nathanielramos13@planetsolarpr.net'],
-['Ocean Vicente Pagan Cassagnol','Alejandro Alameda','Consultor','oceanpagan5@planetsolarpr.net'],
-['Rafael Ramos','Jomar Crespo','Consultor','rafaelramos75@planetsolarpr.net'],
-['Reilnado Acevedo','Chris Perez','Consultor','reinaldoacevedo14@planetsolarpr.net'],
-['Richard A. Caban Luciano','Nathaniel Ramos Valentin','Consultor','richardcaban17@planetsolarpr.net'],
-['Richard Flores','Ronaldo De Jesus','Consultor','richardflores84@planetsolarpr.net'],
-['Roberto Valentin','Alex Jomar Rodriguez','Consultor','robertovalentin16@planetsolarpr.net'],
-['Rodney Parilla','Abdiel Vargas','Consultor','rodneyperrilla15@planetsolarpr.net'],
-['Ronaldo De Jesus','Abdiel Vargas','Regional','ronaldode20@planetsolarpr.net'],
-['Ruben Colon','Luis Enrique Cruz','Consultor','rubencolon15@planetsolarpr.net'],
-['Sebastian Alvarado','Felix Dones','Presidente','sebastianalvarado14@planetsolarpr.net'],
-['Shaneika Santamaria','Mario Rosado','Trainee','shaneikasantamaria12@planetsolarpr.net'],
-['Sonelisse De Jesus','Abdiel Vargas','Consultor','sonelissede22@planetsolarpr.net'],
-['Steven Diaz Torres','Luis Quinones','Team Leader','stevendiaz18@planetsolarpr.net'],
-['Taysha De La Torre','Dionel Medina Uroza','Consultor','tayshade16@planetsolarpr.net'],
-['Victor Fuentes Torres','Johnsuelle Fuentes','Consultor','victorfuentes5@planetsolarpr.net'],
-['Victor Ortiz','Kasandra Garcia','Consultor','victorortiz15@planetsolarpr.net'],
-['Victor Santiago','Bryan Lopez','Consultor','victorsantiago16@planetsolarpr.net'],
-['Yanira Valentin Rivera','Nathaniel Ramos Valentin','Trainee','yaniravalentin16@planetsolarpr.net'],
-['Yarriz Rodriguez','Bryan Lopez','Consultor','yarrizrodriguez11@planetsolarpr.net'],
-['Yeivyan Caraballo','Jose Burgos','Consultor','yeivyancaraballo6@planetsolarpr.net'],
-['Yeniel Quiles','Angel Robles','Consultor','yenielquiles17@planetsolarpr.net'],
-['Jose Cruz Gonzalez','Luis Enrique Cruz','Consultor',''],
-];
+// Core data - starts empty, loaded from Sheet via Firebase
+let RAW=[];
 
 const CHECKS=['db','licencia','permiso','validado'];
 const CHECK_LABELS={db:'Encontrado en Planet DB',licencia:'Licencia Core HubSpot',permiso:'Permiso correcto en HubSpot',validado:'Validado y entrado'};
 const emailMap={},supMap={},rangoMap={};
-RAW.forEach(([n,s,r,e])=>{emailMap[n]=e;supMap[n]=s;rangoMap[n]=r;});
 const children={};
-RAW.forEach(([n,s])=>{if(s){if(!children[s])children[s]=[];children[s].push(n);}});
-const supervisors=new Set(RAW.map(r=>r[1]).filter(Boolean));
-document.getElementById('s-teams').textContent=[...supervisors].length;
 
 let openNodes=new Set(['Luis Enrique Cruz']);
 let currentFilter='all';
@@ -498,6 +237,147 @@ function setSyncStatus(s){
   else if(s==='err'){el.textContent='✗ Sin conexión';el.className='sync-status sync-err';}
   else{el.textContent='Sincronizando...';el.className='sync-status sync-loading';}
 }
+
+function rebuildMaps(){
+  Object.keys(emailMap).forEach(k=>delete emailMap[k]);
+  Object.keys(supMap).forEach(k=>delete supMap[k]);
+  Object.keys(rangoMap).forEach(k=>delete rangoMap[k]);
+  Object.keys(children).forEach(k=>delete children[k]);
+  RAW.forEach(([n,s,r,e])=>{emailMap[n]=e;supMap[n]=s;rangoMap[n]=r;});
+  RAW.forEach(([n,s])=>{if(s){if(!children[s])children[s]=[];if(!children[s].includes(n))children[s].push(n);}});
+  const supervisors=new Set(RAW.map(r=>r[1]).filter(Boolean));
+  document.getElementById('s-teams').textContent=[...supervisors].length;
+  document.querySelector('.stats .stat:nth-child(2) span').textContent=RAW.length;
+}
+
+// Parse CSV text into sheetData object
+function parseSheetCSV(text){
+  const rows=text.trim().split('\n').map(r=>r.split(','));
+  const headers=rows[0].map(h=>h.trim().replace(/"/g,'').toLowerCase());
+  const iVal=headers.findIndex(h=>h.includes('validado'));
+  const iName=headers.findIndex(h=>h.includes('nombre completo'));
+  const iSup=headers.findIndex(h=>h.includes('supervisor'));
+  const iRango=headers.findIndex(h=>h.includes('rango'));
+  const iEmail=headers.findIndex(h=>h.includes('corporateemail'));
+  if(iName===-1||iSup===-1) throw new Error('Columnas no encontradas');
+  const sheetData={};
+  rows.slice(1).forEach(r=>{
+    const val=(r[iVal]||'').trim().replace(/"/g,'').toUpperCase();
+    if(val!=='TRUE') return;
+    const name=(r[iName]||'').trim().replace(/"/g,'');
+    if(!name) return;
+    sheetData[name]={
+      name,
+      sup:(r[iSup]||'').trim().replace(/"/g,''),
+      rango:(r[iRango]||'').trim().replace(/"/g,''),
+      email:iEmail>=0?(r[iEmail]||'').trim().replace(/"/g,''):'',
+    };
+  });
+  return sheetData;
+}
+
+// Apply sheetData to RAW — compare with previousData (from Firebase) to detect changes
+async function applySheetData(sheetData, previousData, logChanges=true){
+  const logs=[];
+  let added=0,removed=0,changed=0;
+
+  // Find added or changed
+  Object.keys(sheetData).forEach(name=>{
+    if(!previousData[name]){
+      added++;
+      RAW.push([sheetData[name].name,sheetData[name].sup,sheetData[name].rango,sheetData[name].email]);
+      if(logChanges) logs.push({msg:`<span class="log-add">➕ Agregado:</span> ${name}`,rawName:name});
+    } else {
+      const cur=previousData[name];
+      const changes=[];
+      if(cur.rango!==sheetData[name].rango) changes.push(`Rango: ${cur.rango}→${sheetData[name].rango}`);
+      if(cur.email!==sheetData[name].email) changes.push(`Email actualizado`);
+      if(cur.sup!==sheetData[name].sup) changes.push(`Supervisor: ${cur.sup}→${sheetData[name].sup}`);
+      RAW.push([sheetData[name].name,sheetData[name].sup,sheetData[name].rango,sheetData[name].email]);
+      if(changes.length>0){
+        changed++;
+        if(logChanges) logs.push({msg:`<span class="log-change">✏️ Cambio:</span> ${name} — ${changes.join(', ')}`,rawName:name});
+      }
+    }
+  });
+
+  // Find removed
+  Object.keys(previousData).forEach(name=>{
+    if(!sheetData[name]){
+      removed++;
+      if(logChanges) logs.push({msg:`<span class="log-remove">❌ Removido:</span> ${name}`,rawName:name});
+    }
+  });
+
+  rebuildMaps();
+
+  if(logChanges&&(added||removed||changed)){
+    const summary=`🔄 Sheet sincronizado — ${added} agregado${added!==1?'s':''}, ${removed} removido${removed!==1?'s':''}, ${changed} cambio${changed!==1?'s':''}`;
+    logs.unshift({msg:`<span class="log-sync">${summary}</span>`,rawName:''});
+    for(const entry of logs) await addLog(entry.msg,entry.rawName);
+    showToast(`✓ ${added} agregados, ${removed} removidos, ${changed} cambios`);
+  }
+
+  // Save current sheet state to Firebase
+  await setDoc(doc(db,'sheetState','latest'),{data:JSON.stringify(sheetData),ts:Date.now()});
+  renderTree();
+}
+
+// Auto-load on page open
+async function autoLoadSheet(){
+  setSyncStatus('loading');
+  try{
+    const res=await fetch(SHEET_URL);
+    const text=await res.text();
+    const sheetData=parseSheetCSV(text);
+
+    // Load previous state from Firebase
+    RAW.length=0;
+    let previousData={};
+    try{
+      const snap=await getDoc(doc(db,'sheetState','latest'));
+      if(snap.exists()) previousData=JSON.parse(snap.data().data||'{}');
+    }catch(e){ previousData={}; }
+
+    const isFirstLoad=Object.keys(previousData).length===0;
+    await applySheetData(sheetData, previousData, !isFirstLoad);
+    setSyncStatus('ok');
+  }catch(e){
+    console.error(e);
+    setSyncStatus('err');
+    document.getElementById('tree').innerHTML='<div style="padding:20px;color:#c0392b;font-size:13px;">⚠️ Error cargando datos del Sheet. Verifica la conexión.</div>';
+  }
+}
+
+// Manual sync button
+async function syncSheet(){
+  const btn=document.querySelector('.sheet-btn');
+  btn.textContent='⏳ Cargando...';btn.disabled=true;
+  setSyncStatus('loading');
+  try{
+    const res=await fetch(SHEET_URL);
+    const text=await res.text();
+    const sheetData=parseSheetCSV(text);
+
+    // Load previous state
+    RAW.length=0;
+    let previousData={};
+    try{
+      const snap=await getDoc(doc(db,'sheetState','latest'));
+      if(snap.exists()) previousData=JSON.parse(snap.data().data||'{}');
+    }catch(e){ previousData={}; }
+
+    await applySheetData(sheetData, previousData, true);
+    setSyncStatus('ok');
+  }catch(e){
+    console.error(e);
+    showToast('Error al leer el Sheet');
+    await addLog(`<span class="log-remove">⚠️ Error al sincronizar: ${e.message}</span>`,'');
+    setSyncStatus('err');
+  }
+  btn.textContent='🔄 Actualizar desde Sheet';btn.disabled=false;
+}
+window.syncSheet=syncSheet;
 
 onSnapshot(collection(db,'checks'),(snapshot)=>{
   snapshot.docChanges().forEach(change=>{
@@ -725,6 +605,9 @@ document.getElementById('search').addEventListener('input',function(){
   document.getElementById('search-clear').style.display=val?'block':'none';
   renderTree();
 });
+
+// Auto-load Sheet on page open
+autoLoadSheet();
 renderTree();
 </script>
 </body>
