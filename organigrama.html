@@ -78,7 +78,6 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
   <input type="text" id="search" placeholder="Buscar por nombre...">
   <button class="btn" onclick="expandAll()">Expandir todo</button>
   <button class="btn" onclick="collapseAll()">Colapsar</button>
-  <button class="btn" onclick="clearAll()" style="color:#c0392b;border-color:#e0b0b0;">Limpiar checks</button>
 </div>
 <div class="filters">
   <span class="filter-label">Filtrar:</span>
@@ -310,7 +309,6 @@ async function setCheck(name,field,val){
 function getCheckCount(name){return CHECKS.filter(k=>getChecks(name)[k]).length;}
 function updateDoneCount(){document.getElementById('s-done').textContent=RAW.filter(([n])=>getCheckCount(n)===4).length;}
 
-// Filter: show node if it passes, dim it if it doesn't but has matching descendants
 function passesFilter(name){
   const c=getChecks(name);const cnt=CHECKS.filter(k=>c[k]).length;
   if(currentFilter==='all') return true;
@@ -348,15 +346,8 @@ function toggleCheck(event,name,field){
 function toggleNode(name){if(openNodes.has(name))openNodes.delete(name);else openNodes.add(name);renderTree();}
 function expandAll(){RAW.forEach(([n])=>openNodes.add(n));Object.keys(children).forEach(k=>openNodes.add(k));renderTree();}
 function collapseAll(){openNodes=new Set(['Luis Enrique Cruz']);renderTree();}
-async function clearAll(){
-  if(!confirm('¿Seguro que quieres limpiar todos los checks?'))return;
-  setSyncStatus('loading');
-  await Promise.all(RAW.map(([n])=>setDoc(doc(db,'checks',n.replace(/ /g,'_')),{})));
-  checksCache={};updateDoneCount();renderTree();setSyncStatus('ok');
-}
 
 function buildNode(name,level){
-  // Skip entirely if no match at all
   if(!hasMatchingDescendant(name)) return '';
   const kids=(children[name]||[]).sort((a,b)=>a.localeCompare(b));
   const hasKids=kids.length>0;
@@ -372,7 +363,6 @@ function buildNode(name,level){
   const cnt=CHECKS.filter(k=>chks[k]).length;
   const kidCount=(children[name]||[]).length;
 
-  // Expand button style
   let expandClass='no-kids';
   let expandLabel='&nbsp;&nbsp;•&nbsp;&nbsp;';
   if(hasKids&&isOpen){expandClass='has-kids-open';expandLabel=`− ${kidCount} miembro${kidCount!==1?'s':''}`;}
@@ -466,7 +456,6 @@ window.copyText=copyText;
 window.toggleCheck=toggleCheck;
 window.expandAll=expandAll;
 window.collapseAll=collapseAll;
-window.clearAll=clearAll;
 window.setFilter=setFilter;
 
 document.getElementById('search').addEventListener('input',renderTree);
