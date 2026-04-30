@@ -605,8 +605,13 @@ function buildNode(name,level){
   let expandLabel='&nbsp;&nbsp;•&nbsp;&nbsp;';
   if(hasKids&&isOpen){expandClass='has-kids-open';expandLabel=`− ${kidsLabel}`;}
   else if(hasKids&&!isOpen){expandClass='has-kids-closed';expandLabel=`+ ${kidsLabel}`;}
-  let html=`<div class="node-wrap ${passes?'':'dimmed'}">
-    <div class="node-row ${lc}">
+
+  // Node opacity: if doesn't pass but is a container with matching kids, show slightly faded
+  // If doesn't pass and no matching kids, already hidden above
+  const nodeOpacity=(!passes&&hasKids)?'opacity:0.5;':'';
+
+  let html=`<div class="node-wrap">
+    <div class="node-row ${lc}" style="${nodeOpacity}">
       <button class="expand-btn ${expandClass}" onclick="toggleNode('${sn}')">${expandLabel}</button>
       <div class="node-card" onclick="toggleNode('${sn}')">
         <div class="name-row">
