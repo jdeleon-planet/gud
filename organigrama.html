@@ -86,23 +86,29 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
 .tab-content.active{display:block;}
 .layout{display:flex;gap:16px;align-items:flex-start;}
 .main-col{flex:1;min-width:0;}
-.log-col{width:280px;flex-shrink:0;background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:14px;position:sticky;top:20px;max-height:85vh;display:flex;flex-direction:column;gap:10px;}
-.log-header{display:flex;align-items:center;justify-content:space-between;}
+.log-col{width:280px;flex-shrink:0;background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:14px;position:sticky;top:20px;height:85vh;display:flex;flex-direction:column;gap:10px;overflow:hidden;}
+.log-header{display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .log-title{font-size:13px;font-weight:700;color:#042C53;}
-.log-search{width:100%;font-size:12px;padding:8px 12px;border:1.5px solid #e0e0e0;border-radius:8px;outline:none;background:#f8f9fa;transition:border-color 0.2s;}
+.log-search{width:100%;font-size:12px;padding:8px 12px;border:1.5px solid #e0e0e0;border-radius:8px;outline:none;background:#f8f9fa;transition:border-color 0.2s;flex-shrink:0;}
 .log-search:focus{border-color:#378ADD;background:#fff;}
-.log-container{overflow-y:auto;flex:1;}
-.log-entry{padding:10px 0;border-bottom:1px solid #f0f0f0;}
-.log-entry:last-child{border-bottom:none;}
-.log-entry-time{font-size:10px;color:#bbb;margin-bottom:3px;font-weight:500;}
-.log-entry-msg{font-size:12px;color:#444;line-height:1.5;}
+.log-container{overflow-y:auto;flex:1;padding-right:4px;}
+.log-container::-webkit-scrollbar{width:4px;}
+.log-container::-webkit-scrollbar-track{background:#f0f0f0;border-radius:4px;}
+.log-container::-webkit-scrollbar-thumb{background:#ccc;border-radius:4px;}
+.log-container::-webkit-scrollbar-thumb:hover{background:#aaa;}
 .log-add{color:#1D9E75;font-weight:700;}
 .log-remove{color:#c0392b;font-weight:700;}
 .log-change{color:#e67e22;font-weight:700;}
 .log-sync{color:#185FA5;font-weight:600;}
+.log-check-on{color:#1D9E75;font-weight:600;}
+.log-check-off{color:#888;font-weight:600;}
 .log-empty{text-align:center;padding:30px 10px;color:#bbb;font-size:12px;}
 .log-user-group{margin-bottom:12px;}
 .log-user-name{font-size:11px;font-weight:700;color:#042C53;padding:5px 8px;background:#E6F1FB;border-radius:6px;margin-bottom:4px;}
+.log-entry{padding:8px 0;border-bottom:1px solid #f5f5f5;}
+.log-entry:last-child{border-bottom:none;}
+.log-entry-time{font-size:10px;color:#bbb;margin-bottom:2px;font-weight:500;}
+.log-entry-msg{font-size:12px;color:#444;line-height:1.4;}
 </style>
 </head>
 <body>
@@ -142,7 +148,7 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
       <span class="log-title">📋 Historial de cambios</span>
     </div>
     <input type="text" class="log-search" id="log-search" placeholder="🔍 Buscar usuario..." oninput="renderLog()">
-    <div id="log-container"><div class="log-empty">Sin cambios aún</div></div>
+    <div class="log-container" id="log-container"><div class="log-empty">Sin cambios aún</div></div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -546,7 +552,13 @@ function copyText(event,text,btnId){
 function toggleCheck(event,name,field){
   event.stopPropagation();
   const c=getChecks(name);
-  setCheck(name,field,!c[field]);
+  const newVal=!c[field];
+  setCheck(name,field,newVal);
+  const label=CHECK_LABELS[field];
+  const msg=newVal
+    ?`<span class="log-check-on">☑ ${label}</span> — ${name}`
+    :`<span class="log-check-off">☐ ${label}</span> — ${name} (desmarcado)`;
+  addLog(msg,name);
   renderTree();
 }
 function toggleNode(name){if(openNodes.has(name))openNodes.delete(name);else openNodes.add(name);renderTree();}
