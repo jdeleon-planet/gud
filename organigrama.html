@@ -530,7 +530,18 @@ function passesFilter(name){
   return !!c[currentFilter];
 }
 function hasMatchingDescendant(name){
+  // For 'all' filter always show
+  if(currentFilter==='all') return true;
+  // Check self
   if(passesFilter(name)) return true;
+  // Check all descendants
+  return (children[name]||[]).some(k=>hasMatchingDescendant(k));
+}
+// Specifically for incomplete: a completed node should be visible only if it has incomplete descendants
+function shouldShowNode(name){
+  if(currentFilter==='all') return true;
+  if(passesFilter(name)) return true;
+  // Show as container only if has matching descendants below
   return (children[name]||[]).some(k=>hasMatchingDescendant(k));
 }
 
@@ -566,8 +577,8 @@ function expandAll(){RAW.forEach(([n])=>openNodes.add(n));Object.keys(children).
 function collapseAll(){openNodes=new Set(['Luis Enrique Cruz']);renderTree();}
 
 function buildNode(name,level){
-  // Skip entirely if no match at all
-  if(!hasMatchingDescendant(name)) return '';
+  // Skip entirely if should not show
+  if(!shouldShowNode(name)) return '';
   const kids=(children[name]||[]).sort((a,b)=>a.localeCompare(b));
   const hasKids=kids.length>0;
   const isOpen=openNodes.has(name);
@@ -584,16 +595,12 @@ function buildNode(name,level){
 
   // Count ALL descendants recursively
   function countDescendants(n){
-    const kids=children[n]||[];
-    let total=kids.length;
-    kids.forEach(k=>{ total+=countDescendants(k); });
-    return total;
+    const k=children[n]||[];
+    return k.reduce((t,c)=>t+1+countDescendants(c),0);
   }
   function countDescendantsDone(n){
-    const kids=children[n]||[];
-    let done=kids.filter(k=>getCheckCount(k)===4).length;
-    kids.forEach(k=>{ done+=countDescendantsDone(k); });
-    return done;
+    const k=children[n]||[];
+    return k.reduce((t,c)=>t+(getCheckCount(c)===4?1:0)+countDescendantsDone(c),0);
   }
   const totalDesc=countDescendants(name);
   const doneDesc=countDescendantsDone(name);
@@ -606,9 +613,8 @@ function buildNode(name,level){
   if(hasKids&&isOpen){expandClass='has-kids-open';expandLabel=`− ${kidsLabel}`;}
   else if(hasKids&&!isOpen){expandClass='has-kids-closed';expandLabel=`+ ${kidsLabel}`;}
 
-  // Node opacity: if doesn't pass but is a container with matching kids, show slightly faded
-  // If doesn't pass and no matching kids, already hidden above
-  const nodeOpacity=(!passes&&hasKids)?'opacity:0.5;':'';
+  // If node doesn't pass filter but is shown as container, fade it slightly
+  const nodeOpacity=!passes?'opacity:0.45;':'';
 
   let html=`<div class="node-wrap">
     <div class="node-row ${lc}" style="${nodeOpacity}">
