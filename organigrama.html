@@ -84,18 +84,25 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
 .tab.active{color:#042C53;border-bottom-color:#042C53;}
 .tab-content{display:none;}
 .tab-content.active{display:block;}
-.log-search{width:100%;font-size:13px;padding:8px 12px;border:1px solid #ddd;border-radius:8px;outline:none;margin-bottom:16px;}
-.log-search:focus{border-color:#378ADD;}
-.log-entry{background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:12px 14px;margin-bottom:8px;}
-.log-entry-time{font-size:11px;color:#aaa;margin-bottom:4px;}
-.log-entry-msg{font-size:13px;color:#333;line-height:1.5;}
-.log-add{color:#1D9E75;font-weight:600;}
-.log-remove{color:#c0392b;font-weight:600;}
-.log-change{color:#e67e22;font-weight:600;}
+.layout{display:flex;gap:16px;align-items:flex-start;}
+.main-col{flex:1;min-width:0;}
+.log-col{width:280px;flex-shrink:0;background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:14px;position:sticky;top:20px;max-height:85vh;display:flex;flex-direction:column;gap:10px;}
+.log-header{display:flex;align-items:center;justify-content:space-between;}
+.log-title{font-size:13px;font-weight:700;color:#042C53;}
+.log-search{width:100%;font-size:12px;padding:8px 12px;border:1.5px solid #e0e0e0;border-radius:8px;outline:none;background:#f8f9fa;transition:border-color 0.2s;}
+.log-search:focus{border-color:#378ADD;background:#fff;}
+.log-container{overflow-y:auto;flex:1;}
+.log-entry{padding:10px 0;border-bottom:1px solid #f0f0f0;}
+.log-entry:last-child{border-bottom:none;}
+.log-entry-time{font-size:10px;color:#bbb;margin-bottom:3px;font-weight:500;}
+.log-entry-msg{font-size:12px;color:#444;line-height:1.5;}
+.log-add{color:#1D9E75;font-weight:700;}
+.log-remove{color:#c0392b;font-weight:700;}
+.log-change{color:#e67e22;font-weight:700;}
 .log-sync{color:#185FA5;font-weight:600;}
-.log-empty{text-align:center;padding:40px;color:#aaa;font-size:13px;}
-.log-user-group{margin-bottom:20px;}
-.log-user-name{font-size:13px;font-weight:700;color:#042C53;padding:8px 12px;background:#E6F1FB;border-radius:8px;margin-bottom:6px;}
+.log-empty{text-align:center;padding:30px 10px;color:#bbb;font-size:12px;}
+.log-user-group{margin-bottom:12px;}
+.log-user-name{font-size:11px;font-weight:700;color:#042C53;padding:5px 8px;background:#E6F1FB;border-radius:6px;margin-bottom:4px;}
 </style>
 </head>
 <body>
@@ -109,13 +116,6 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
   <div class="stat"><span id="s-done">0</span>completados ✅</div>
   <span class="sync-status sync-loading" id="sync-status">Conectando...</span>
 </div>
-
-<div class="tabs">
-  <button class="tab active" onclick="switchTab('organigrama',this)">🌳 Organigrama</button>
-  <button class="tab" onclick="switchTab('log',this)">📋 Log de cambios</button>
-</div>
-
-<div class="tab-content active" id="tab-organigrama">
 <div class="toolbar">
   <input type="text" id="search" placeholder="Buscar por nombre...">
   <button class="btn" onclick="expandAll()">Expandir todo</button>
@@ -133,14 +133,18 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
   <button class="filter-btn" onclick="setFilter('permiso',this)">Permiso HubSpot</button>
   <button class="filter-btn" onclick="setFilter('validado',this)">Validado y entrado</button>
 </div>
-<div id="tree"></div>
+<div class="layout">
+  <div class="main-col">
+    <div id="tree"></div>
+  </div>
+  <div class="log-col">
+    <div class="log-header">
+      <span class="log-title">📋 Historial de cambios</span>
+    </div>
+    <input type="text" class="log-search" id="log-search" placeholder="🔍 Buscar usuario..." oninput="renderLog()">
+    <div id="log-container"><div class="log-empty">Sin cambios aún</div></div>
+  </div>
 </div>
-
-<div class="tab-content" id="tab-log">
-  <input type="text" class="log-search" id="log-search" placeholder="Buscar por nombre de usuario..." oninput="renderLog()">
-  <div id="log-container"><div class="log-empty">Sin cambios aún</div></div>
-</div>
-
 <div class="toast" id="toast"></div>
 </div>
 
@@ -162,38 +166,21 @@ const db = getFirestore(app);
 
 const SHEET_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vS-CpZK78m6Sjz5450dGOL3042NUbPhDiUk3CYhAmarN8Ff2vccbL9E3xeQJyL-ohRcfqf3WVVVDz1B/pub?gid=0&single=true&output=csv';
 
-// Tab switching
-function switchTab(tab, btn){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('tab-'+tab).classList.add('active');
-}
-window.switchTab=switchTab;
-
 // Log functions
 let allLogs=[];
 function fmtTime(ts){
   const d=ts?new Date(ts):new Date();
-  return d.toLocaleDateString('es-PR',{month:'short',day:'numeric',year:'numeric'})+' '+d.toLocaleTimeString('es-PR',{hour:'2-digit',minute:'2-digit'});
+  return d.toLocaleDateString('es-PR',{month:'short',day:'numeric',year:'numeric'})+' • '+d.toLocaleTimeString('es-PR',{hour:'2-digit',minute:'2-digit'});
 }
 function renderLog(){
   const q=(document.getElementById('log-search').value||'').toLowerCase().trim();
   const el=document.getElementById('log-container');
   if(!allLogs.length){el.innerHTML='<div class="log-empty">Sin cambios aún</div>';return;}
-
-  // Filter by search
   const filtered=q?allLogs.filter(e=>(e.rawName||'').toLowerCase().includes(q)):allLogs;
-  if(!filtered.length){el.innerHTML='<div class="log-empty">No se encontraron cambios para ese usuario</div>';return;}
-
-  // Group by user if searching, otherwise show flat list
+  if(!filtered.length){el.innerHTML='<div class="log-empty">No encontrado</div>';return;}
   if(q){
     const grouped={};
-    filtered.forEach(e=>{
-      const name=e.rawName||'General';
-      if(!grouped[name]) grouped[name]=[];
-      grouped[name].push(e);
-    });
+    filtered.forEach(e=>{const name=e.rawName||'General';if(!grouped[name])grouped[name]=[];grouped[name].push(e);});
     el.innerHTML=Object.entries(grouped).map(([name,entries])=>`
       <div class="log-user-group">
         <div class="log-user-name">👤 ${name}</div>
@@ -602,6 +589,10 @@ function buildNode(name,level){
           <span class="email-text" title="${email}">${email||'sin email'}</span>
           ${email?`<button class="copy-btn" id="${eb}" onclick="copyText(event,'${email}','${eb}')">Email</button>`:''}
         </div>
+        ${supMap[name]?`<div class="email-row" onclick="event.stopPropagation()" style="margin-bottom:6px;">
+          <span style="font-size:11px;opacity:0.8;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">👤 ${supMap[name]}</span>
+          <button class="copy-btn" id="sb_${nb}" onclick="copyText(event,'${(supMap[name]||'').replace(/'/g,"\\'")}','sb_${nb}')">Líder</button>
+        </div>`:''}
         <div class="progress-bar"><div class="progress-fill" style="width:${cnt*25}%"></div></div>
         <div class="checks" onclick="event.stopPropagation()">
           ${CHECKS.map(k=>`<label class="check-item"><input type="checkbox" ${chks[k]?'checked':''} onchange="toggleCheck(event,'${sn}','${k}')"><span class="check-label">${CHECK_LABELS[k]}</span></label>`).join('')}
