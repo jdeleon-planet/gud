@@ -123,7 +123,10 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
   <span class="sync-status sync-loading" id="sync-status">Conectando...</span>
 </div>
 <div class="toolbar">
-  <input type="text" id="search" placeholder="Buscar por nombre...">
+  <div style="flex:1;position:relative;min-width:200px;">
+    <input type="text" id="search" placeholder="Buscar por nombre o email..." style="width:100%;padding-right:32px;">
+    <button id="search-clear" onclick="clearSearch()" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:#aaa;line-height:1;">✕</button>
+  </div>
   <button class="btn" onclick="expandAll()">Expandir todo</button>
   <button class="btn" onclick="collapseAll()">Colapsar</button>
   <button class="btn sheet-btn" onclick="syncSheet()">🔄 Actualizar desde Sheet</button>
@@ -656,7 +659,7 @@ function renderTree(){
   const q=document.getElementById('search').value.toLowerCase().trim();
   const tree=document.getElementById('tree');
   if(q){
-    const matches=RAW.filter(([n])=>n.toLowerCase().includes(q));
+    const matches=RAW.filter(([n])=>n.toLowerCase().includes(q)||(emailMap[n]||'').toLowerCase().includes(q));
     tree.innerHTML=matches.map(([n])=>{
       const em=emailMap[n]||'';const nb='nb_'+(btnCounter++);const eb='eb_'+(btnCounter++);
       const chks=getChecks(n);const cnt=CHECKS.filter(k=>chks[k]).length;
@@ -710,7 +713,18 @@ window.expandAll=expandAll;
 window.collapseAll=collapseAll;
 window.setFilter=setFilter;
 
-document.getElementById('search').addEventListener('input',renderTree);
+function clearSearch(){
+  document.getElementById('search').value='';
+  document.getElementById('search-clear').style.display='none';
+  renderTree();
+}
+window.clearSearch=clearSearch;
+
+document.getElementById('search').addEventListener('input',function(){
+  const val=this.value;
+  document.getElementById('search-clear').style.display=val?'block':'none';
+  renderTree();
+});
 renderTree();
 </script>
 </body>
