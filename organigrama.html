@@ -46,7 +46,7 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
 .filter-btn.active{background:#042C53;color:#fff;border-color:#042C53;}
 .node-wrap{margin:4px 0;}
 .node-row{display:flex;align-items:flex-start;gap:8px;}
-.expand-btn{margin-top:8px;min-width:80px;height:26px;display:flex;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:700;border-radius:6px;cursor:pointer;flex-shrink:0;border:2px solid;padding:0 8px;white-space:nowrap;}
+.expand-btn{margin-top:8px;min-width:180px;height:26px;display:flex;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:700;border-radius:6px;cursor:pointer;flex-shrink:0;border:2px solid;padding:0 8px;white-space:nowrap;}
 .expand-btn.has-kids-open{background:#042C53;color:#fff;border-color:#042C53;}
 .expand-btn.has-kids-closed{background:#fff;color:#042C53;border-color:#042C53;}
 .expand-btn.no-kids{background:transparent;color:#aaa;border-color:#ddd;cursor:default;font-weight:400;}
@@ -131,7 +131,7 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
 <div class="filters">
   <span class="filter-label">Filtrar:</span>
   <button class="filter-btn active" onclick="setFilter('all',this)">Todos</button>
-  <button class="filter-btn" onclick="setFilter('none',this)">Sin validar</button>
+  <button class="filter-btn" onclick="setFilter('incomplete',this)">No completados</button>
   <button class="filter-btn" onclick="setFilter('partial',this)">En progreso</button>
   <button class="filter-btn" onclick="setFilter('complete',this)">Completados ✅</button>
   <button class="filter-btn" onclick="setFilter('db',this)">Planet DB</button>
@@ -524,7 +524,7 @@ function updateDoneCount(){document.getElementById('s-done').textContent=RAW.fil
 function passesFilter(name){
   const c=getChecks(name);const cnt=CHECKS.filter(k=>c[k]).length;
   if(currentFilter==='all') return true;
-  if(currentFilter==='none') return cnt===0;
+  if(currentFilter==='incomplete') return cnt<4;
   if(currentFilter==='partial') return cnt>0&&cnt<4;
   if(currentFilter==='complete') return cnt===4;
   return !!c[currentFilter];
@@ -582,12 +582,29 @@ function buildNode(name,level){
   const cnt=CHECKS.filter(k=>chks[k]).length;
   const kidCount=(children[name]||[]).length;
 
+  // Count ALL descendants recursively
+  function countDescendants(n){
+    const kids=children[n]||[];
+    let total=kids.length;
+    kids.forEach(k=>{ total+=countDescendants(k); });
+    return total;
+  }
+  function countDescendantsDone(n){
+    const kids=children[n]||[];
+    let done=kids.filter(k=>getCheckCount(k)===4).length;
+    kids.forEach(k=>{ done+=countDescendantsDone(k); });
+    return done;
+  }
+  const totalDesc=countDescendants(name);
+  const doneDesc=countDescendantsDone(name);
+  const pendingDesc=totalDesc-doneDesc;
+  const kidsLabel=hasKids?`${totalDesc} miembro${totalDesc!==1?'s':''} • ${doneDesc} ✅ • ${pendingDesc} pendientes`:'';
+
   // Expand button style
   let expandClass='no-kids';
   let expandLabel='&nbsp;&nbsp;•&nbsp;&nbsp;';
-  if(hasKids&&isOpen){expandClass='has-kids-open';expandLabel=`− ${kidCount} miembro${kidCount!==1?'s':''}`;}
-  else if(hasKids&&!isOpen){expandClass='has-kids-closed';expandLabel=`+ ${kidCount} miembro${kidCount!==1?'s':''}`;}
-
+  if(hasKids&&isOpen){expandClass='has-kids-open';expandLabel=`− ${kidsLabel}`;}
+  else if(hasKids&&!isOpen){expandClass='has-kids-closed';expandLabel=`+ ${kidsLabel}`;}
   let html=`<div class="node-wrap ${passes?'':'dimmed'}">
     <div class="node-row ${lc}">
       <button class="expand-btn ${expandClass}" onclick="toggleNode('${sn}')">${expandLabel}</button>
