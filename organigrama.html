@@ -78,6 +78,24 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
 .search-card{background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:14px;margin-bottom:10px;}
 .lider-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;margin-bottom:4px;}
 .lider-num{width:22px;height:22px;border-radius:50%;background:#185FA5;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid #e0e0e0;padding-bottom:0;}
+.tab{font-size:13px;font-weight:600;padding:10px 20px;cursor:pointer;border:none;background:transparent;color:#888;border-bottom:3px solid transparent;margin-bottom:-2px;}
+.tab:hover{color:#042C53;}
+.tab.active{color:#042C53;border-bottom-color:#042C53;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+.log-search{width:100%;font-size:13px;padding:8px 12px;border:1px solid #ddd;border-radius:8px;outline:none;margin-bottom:16px;}
+.log-search:focus{border-color:#378ADD;}
+.log-entry{background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:12px 14px;margin-bottom:8px;}
+.log-entry-time{font-size:11px;color:#aaa;margin-bottom:4px;}
+.log-entry-msg{font-size:13px;color:#333;line-height:1.5;}
+.log-add{color:#1D9E75;font-weight:600;}
+.log-remove{color:#c0392b;font-weight:600;}
+.log-change{color:#e67e22;font-weight:600;}
+.log-sync{color:#185FA5;font-weight:600;}
+.log-empty{text-align:center;padding:40px;color:#aaa;font-size:13px;}
+.log-user-group{margin-bottom:20px;}
+.log-user-name{font-size:13px;font-weight:700;color:#042C53;padding:8px 12px;background:#E6F1FB;border-radius:8px;margin-bottom:6px;}
 </style>
 </head>
 <body>
@@ -86,11 +104,18 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
 <p class="subtitle">Jerarquía de equipos GUD</p>
 <div class="stats">
   <div class="stat"><span id="s-teams">—</span>equipos</div>
-  <div class="stat"><span>151</span>usuarios</div>
+  <div class="stat"><span id="s-users">151</span>usuarios</div>
   <div class="stat"><span>6</span>niveles</div>
   <div class="stat"><span id="s-done">0</span>completados ✅</div>
   <span class="sync-status sync-loading" id="sync-status">Conectando...</span>
 </div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('organigrama',this)">🌳 Organigrama</button>
+  <button class="tab" onclick="switchTab('log',this)">📋 Log de cambios</button>
+</div>
+
+<div class="tab-content active" id="tab-organigrama">
 <div class="toolbar">
   <input type="text" id="search" placeholder="Buscar por nombre...">
   <button class="btn" onclick="expandAll()">Expandir todo</button>
@@ -108,15 +133,14 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
   <button class="filter-btn" onclick="setFilter('permiso',this)">Permiso HubSpot</button>
   <button class="filter-btn" onclick="setFilter('validado',this)">Validado y entrado</button>
 </div>
-<div class="layout">
-<div class="main-col">
 <div id="tree"></div>
 </div>
-<div class="log-col">
-  <div class="log-title">📋 Log de cambios</div>
-  <div class="log-list" id="log-list"><div class="log-empty">Sin cambios aún</div></div>
+
+<div class="tab-content" id="tab-log">
+  <input type="text" class="log-search" id="log-search" placeholder="Buscar por nombre de usuario..." oninput="renderLog()">
+  <div id="log-container"><div class="log-empty">Sin cambios aún</div></div>
 </div>
-</div>
+
 <div class="toast" id="toast"></div>
 </div>
 
@@ -138,26 +162,65 @@ const db = getFirestore(app);
 
 const SHEET_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vS-CpZK78m6Sjz5450dGOL3042NUbPhDiUk3CYhAmarN8Ff2vccbL9E3xeQJyL-ohRcfqf3WVVVDz1B/pub?gid=0&single=true&output=csv';
 
+// Tab switching
+function switchTab(tab, btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+}
+window.switchTab=switchTab;
+
 // Log functions
+let allLogs=[];
 function fmtTime(ts){
   const d=ts?new Date(ts):new Date();
-  return d.toLocaleDateString('es-PR',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('es-PR',{hour:'2-digit',minute:'2-digit'});
+  return d.toLocaleDateString('es-PR',{month:'short',day:'numeric',year:'numeric'})+' '+d.toLocaleTimeString('es-PR',{hour:'2-digit',minute:'2-digit'});
 }
-function renderLog(entries){
-  const el=document.getElementById('log-list');
-  if(!entries||entries.length===0){el.innerHTML='<div class="log-empty">Sin cambios aún</div>';return;}
-  el.innerHTML=entries.map(e=>`<div class="log-entry"><div class="log-time">${fmtTime(e.ts)}</div><div class="log-msg">${e.msg}</div></div>`).join('');
+function renderLog(){
+  const q=(document.getElementById('log-search').value||'').toLowerCase().trim();
+  const el=document.getElementById('log-container');
+  if(!allLogs.length){el.innerHTML='<div class="log-empty">Sin cambios aún</div>';return;}
+
+  // Filter by search
+  const filtered=q?allLogs.filter(e=>(e.rawName||'').toLowerCase().includes(q)):allLogs;
+  if(!filtered.length){el.innerHTML='<div class="log-empty">No se encontraron cambios para ese usuario</div>';return;}
+
+  // Group by user if searching, otherwise show flat list
+  if(q){
+    const grouped={};
+    filtered.forEach(e=>{
+      const name=e.rawName||'General';
+      if(!grouped[name]) grouped[name]=[];
+      grouped[name].push(e);
+    });
+    el.innerHTML=Object.entries(grouped).map(([name,entries])=>`
+      <div class="log-user-group">
+        <div class="log-user-name">👤 ${name}</div>
+        ${entries.map(e=>`<div class="log-entry">
+          <div class="log-entry-time">${fmtTime(e.ts)}</div>
+          <div class="log-entry-msg">${e.msg}</div>
+        </div>`).join('')}
+      </div>`).join('');
+  } else {
+    el.innerHTML=filtered.map(e=>`<div class="log-entry">
+      <div class="log-entry-time">${fmtTime(e.ts)}</div>
+      <div class="log-entry-msg">${e.msg}</div>
+    </div>`).join('');
+  }
 }
-async function addLog(msg){
-  try{
-    await addDoc(collection(db,'logs'),{msg,ts:Date.now()});
-  }catch(e){console.error(e);}
-}
+window.renderLog=renderLog;
+
 // Listen to log in real time
-onSnapshot(query(collection(db,'logs'),orderBy('ts','desc'),limit(50)),(snap)=>{
-  const entries=snap.docs.map(d=>d.data());
-  renderLog(entries);
+onSnapshot(query(collection(db,'logs'),orderBy('ts','desc'),limit(200)),(snap)=>{
+  allLogs=snap.docs.map(d=>d.data());
+  renderLog();
 });
+
+async function addLog(msg, rawName=''){
+  try{ await addDoc(collection(db,'logs'),{msg,rawName,ts:Date.now()}); }
+  catch(e){ console.error(e); }
+}
 
 // Sheet sync
 async function syncSheet(){
@@ -208,7 +271,7 @@ async function syncSheet(){
         supMap[d.name]=d.sup;
         rangoMap[d.name]=d.rango;
         if(d.sup){if(!children[d.sup])children[d.sup]=[];if(!children[d.sup].includes(d.name))children[d.sup].push(d.name);}
-        logs.push(`<span class="log-add">➕ Agregado:</span> ${name}`);
+        logs.push({msg:`<span class="log-add">➕ Agregado:</span> ${name}`,rawName:name});
       } else {
         // Check for changes
         const cur=currentMap[name];
@@ -224,7 +287,7 @@ async function syncSheet(){
           emailMap[name]=sheetData[name].email;
           supMap[name]=sheetData[name].sup;
           rangoMap[name]=sheetData[name].rango;
-          logs.push(`<span class="log-change">✏️ Cambio:</span> ${name} — ${changes.join(', ')}`);
+          logs.push({msg:`<span class="log-change">✏️ Cambio:</span> ${name} — ${changes.join(', ')}`,rawName:name});
         }
       }
     });
@@ -237,7 +300,7 @@ async function syncSheet(){
         if(idx>=0) RAW.splice(idx,1);
         delete emailMap[name];delete supMap[name];delete rangoMap[name];
         Object.keys(children).forEach(k=>{children[k]=children[k].filter(c=>c!==name);});
-        logs.push(`<span class="log-remove">❌ Removido:</span> ${name}`);
+        logs.push({msg:`<span class="log-remove">❌ Removido:</span> ${name}`,rawName:name});
       }
     });
 
@@ -251,15 +314,15 @@ async function syncSheet(){
     document.querySelector('.stats .stat:nth-child(2) span').textContent=RAW.length;
 
     const summary=`🔄 Sheet sincronizado — ${added} agregado${added!==1?'s':''}, ${removed} removido${removed!==1?'s':''}, ${changed} cambio${changed!==1?'s':''}`;
-    logs.unshift(`<span class="log-sync">${summary}</span>`);
-    for(const msg of logs) await addLog(msg);
+    logs.unshift({msg:`<span class="log-sync">${summary}</span>`,rawName:''});
+    for(const entry of logs) await addLog(entry.msg, entry.rawName);
 
     showToast(`✓ ${added} agregados, ${removed} removidos, ${changed} cambios`);
     renderTree();
   }catch(e){
     console.error(e);
     showToast('Error al leer el Sheet');
-    await addLog(`<span class="log-remove">⚠️ Error al sincronizar Sheet: ${e.message}</span>`);
+    await addLog(`<span class="log-remove">⚠️ Error al sincronizar Sheet: ${e.message}</span>`,'');
   }
   btn.textContent='🔄 Actualizar desde Sheet';btn.disabled=false;
 }
@@ -496,13 +559,7 @@ function copyText(event,text,btnId){
 function toggleCheck(event,name,field){
   event.stopPropagation();
   const c=getChecks(name);
-  const newVal=!c[field];
-  setCheck(name,field,newVal);
-  const label=CHECK_LABELS[field];
-  const msg=newVal
-    ?`<span class="log-check">☑ ${name}</span> — ${label}`
-    :`<span class="log-check">☐ ${name}</span> — ${label} (desmarcado)`;
-  addLog(msg);
+  setCheck(name,field,!c[field]);
   renderTree();
 }
 function toggleNode(name){if(openNodes.has(name))openNodes.delete(name);else openNodes.add(name);renderTree();}
