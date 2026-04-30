@@ -23,6 +23,10 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
 .filter-btn{font-size:11px;padding:5px 12px;border:1px solid #ddd;border-radius:20px;cursor:pointer;background:#fff;color:#555;white-space:nowrap;}
 .filter-btn:hover{background:#f0f0f0;}
 .filter-btn.active{background:#042C53;color:#fff;border-color:#042C53;}
+.sync-status{font-size:11px;padding:4px 10px;border-radius:20px;margin-left:auto;}
+.sync-ok{background:#e8f5e9;color:#2e7d32;}
+.sync-err{background:#fce4ec;color:#c62828;}
+.sync-loading{background:#fff3e0;color:#e65100;}
 .node-wrap{margin:4px 0;}
 .node-row{display:flex;align-items:flex-start;gap:6px;}
 .toggle-btn{margin-top:12px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#888;flex-shrink:0;cursor:pointer;}
@@ -63,6 +67,7 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
   <div class="stat"><span>151</span>usuarios</div>
   <div class="stat"><span>6</span>niveles</div>
   <div class="stat"><span id="s-done">0</span>completados ✅</div>
+  <span class="sync-status sync-loading" id="sync-status">Conectando...</span>
 </div>
 <div class="toolbar">
   <input type="text" id="search" placeholder="Buscar por nombre...">
@@ -84,7 +89,23 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
 <div id="tree"></div>
 <div class="toast" id="toast"></div>
 </div>
-<script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDAQuaSxlLYn0sEUkjdx70QW2CFQAv7dkQ",
+  authDomain: "orgama-gud.firebaseapp.com",
+  projectId: "orgama-gud",
+  storageBucket: "orgama-gud.firebasestorage.app",
+  messagingSenderId: "842692575659",
+  appId: "1:842692575659:web:47b1765950062b9980d2ee"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
 const RAW=[
 ['Jose Pagan','Jose Fabian Fuentes Rios','Consultor','josefuentes9@planetsolarpr.net'],
 ['Jose Baez Vidro','Alex Vega Lopez','Trainee',''],
@@ -238,6 +259,7 @@ const RAW=[
 ['Yeniel Quiles','Angel Robles','Consultor','yenielquiles17@planetsolarpr.net'],
 ['Jose Cruz Gonzalez','Luis Enrique Cruz','Consultor',''],
 ];
+
 const CHECKS=['db','licencia','permiso','validado'];
 const CHECK_LABELS={db:'Encontrado en Planet DB',licencia:'Licencia Core HubSpot',permiso:'Permiso correcto en HubSpot',validado:'Validado y entrado'};
 const emailMap={},supMap={},rangoMap={};
@@ -246,13 +268,55 @@ const children={};
 RAW.forEach(([n,s])=>{if(s){if(!children[s])children[s]=[];children[s].push(n);}});
 const supervisors=new Set(RAW.map(r=>r[1]).filter(Boolean));
 document.getElementById('s-teams').textContent=[...supervisors].length;
+
 let openNodes=new Set(['Luis Enrique Cruz']);
 let currentFilter='all';
 let btnCounter=0;
-function getChecks(name){try{return JSON.parse(localStorage.getItem('chk_'+name))||{};}catch(e){return {};}}
-function setCheck(name,field,val){const c=getChecks(name);c[field]=val;localStorage.setItem('chk_'+name,JSON.stringify(c));updateDoneCount();}
+let checksCache={};
+
+function setSyncStatus(status){
+  const el=document.getElementById('sync-status');
+  if(status==='ok'){el.textContent='✓ Sincronizado';el.className='sync-status sync-ok';}
+  else if(status==='err'){el.textContent='✗ Sin conexión';el.className='sync-status sync-err';}
+  else{el.textContent='Sincronizando...';el.className='sync-status sync-loading';}
+}
+
+// Listen for real-time updates from Firestore
+const colRef = collection(db,'checks');
+onSnapshot(colRef,(snapshot)=>{
+  snapshot.docChanges().forEach(change=>{
+    const name=change.doc.id.replace(/_/g,' ');
+    if(change.type==='removed') delete checksCache[name];
+    else checksCache[name]=change.doc.data();
+  });
+  setSyncStatus('ok');
+  updateDoneCount();
+  renderTree();
+},(err)=>{
+  console.error(err);
+  setSyncStatus('err');
+});
+
+function getChecks(name){return checksCache[name]||{};}
+
+async function setCheck(name,field,val){
+  setSyncStatus('loading');
+  const key=name.replace(/ /g,'_');
+  const cur=getChecks(name);
+  cur[field]=val;
+  checksCache[name]=cur;
+  try{
+    await setDoc(doc(db,'checks',key),cur);
+    setSyncStatus('ok');
+  }catch(e){
+    console.error(e);
+    setSyncStatus('err');
+  }
+}
+
 function getCheckCount(name){const c=getChecks(name);return CHECKS.filter(k=>c[k]).length;}
 function updateDoneCount(){document.getElementById('s-done').textContent=RAW.filter(([n])=>getCheckCount(n)===4).length;}
+
 function passesFilter(name){
   const c=getChecks(name);const count=CHECKS.filter(k=>c[k]).length;
   if(currentFilter==='all')return true;
@@ -264,6 +328,7 @@ function passesFilter(name){
 function hasVisibleDescendant(name){if(passesFilter(name))return true;return(children[name]||[]).some(k=>hasVisibleDescendant(k));}
 function setFilter(f,btn){currentFilter=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderTree();}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity=1;setTimeout(()=>t.style.opacity=0,1800);}
+
 function copyText(event,text,btnId){
   event.stopPropagation();if(!text)return;
   navigator.clipboard.writeText(text).then(()=>{
@@ -272,11 +337,32 @@ function copyText(event,text,btnId){
     showToast('Copiado ✓');
   });
 }
-function toggleCheck(event,name,field){event.stopPropagation();const c=getChecks(name);setCheck(name,field,!c[field]);renderTree();}
+
+function toggleCheck(event,name,field){
+  event.stopPropagation();
+  const c=getChecks(name);
+  setCheck(name,field,!c[field]);
+  renderTree();
+}
+
 function toggleNode(name){if(openNodes.has(name))openNodes.delete(name);else openNodes.add(name);renderTree();}
 function expandAll(){RAW.forEach(([n])=>openNodes.add(n));Object.keys(children).forEach(k=>openNodes.add(k));renderTree();}
 function collapseAll(){openNodes=new Set(['Luis Enrique Cruz']);renderTree();}
-function clearAll(){if(!confirm('¿Seguro que quieres limpiar todos los checks?'))return;RAW.forEach(([n])=>localStorage.removeItem('chk_'+n));updateDoneCount();renderTree();}
+
+async function clearAll(){
+  if(!confirm('¿Seguro que quieres limpiar todos los checks?'))return;
+  setSyncStatus('loading');
+  const promises=RAW.map(([n])=>{
+    const key=n.replace(/ /g,'_');
+    return setDoc(doc(db,'checks',key),{});
+  });
+  await Promise.all(promises);
+  checksCache={};
+  updateDoneCount();
+  renderTree();
+  setSyncStatus('ok');
+}
+
 function buildNode(name,level){
   if(!hasVisibleDescendant(name)&&!passesFilter(name))return'';
   const kids=(children[name]||[]).sort((a,b)=>a.localeCompare(b));
@@ -306,7 +392,9 @@ function buildNode(name,level){
   if(hasKids&&isOpen){html+=`<div class="children">`;kids.forEach(k=>{html+=buildNode(k,level+1);});html+=`</div>`;}
   html+=`</div>`;return html;
 }
+
 function getChain(name){const chain=[];let cur=supMap[name]||'';const seen=new Set([name]);while(cur&&!seen.has(cur)){chain.push(cur);seen.add(cur);cur=supMap[cur]||'';}return chain;}
+
 function renderTree(){
   btnCounter=0;
   const q=document.getElementById('search').value.toLowerCase().trim();
@@ -358,8 +446,16 @@ function renderTree(){
   }
   tree.innerHTML=buildNode('Luis Enrique Cruz',0);
 }
+
+window.toggleNode=toggleNode;
+window.copyText=copyText;
+window.toggleCheck=toggleCheck;
+window.expandAll=expandAll;
+window.collapseAll=collapseAll;
+window.clearAll=clearAll;
+window.setFilter=setFilter;
+
 document.getElementById('search').addEventListener('input',renderTree);
-updateDoneCount();
 renderTree();
 </script>
 </body>
