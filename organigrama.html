@@ -7,7 +7,24 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;padding:24px 20px;color:#1a1a1a;display:flex;justify-content:center;}
-.container{max-width:960px;width:100%;}
+.container{max-width:1280px;width:100%;}
+.layout{display:flex;gap:16px;align-items:flex-start;}
+.main-col{flex:1;min-width:0;}
+.log-col{width:300px;flex-shrink:0;background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:14px;position:sticky;top:20px;max-height:90vh;display:flex;flex-direction:column;}
+.log-title{font-size:13px;font-weight:700;color:#042C53;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.log-list{overflow-y:auto;flex:1;}
+.log-entry{padding:8px 0;border-bottom:0.5px solid #f0f0f0;font-size:11px;}
+.log-entry:last-child{border-bottom:none;}
+.log-time{color:#aaa;font-size:10px;margin-bottom:2px;}
+.log-msg{color:#333;line-height:1.4;}
+.log-add{color:#1D9E75;font-weight:600;}
+.log-remove{color:#c0392b;font-weight:600;}
+.log-change{color:#e67e22;font-weight:600;}
+.log-check{color:#185FA5;font-weight:600;}
+.log-sync{color:#888;font-style:italic;}
+.log-empty{color:#aaa;font-size:12px;text-align:center;padding:20px 0;}
+.sheet-btn{background:#1D9E75;color:#fff;border-color:#1D9E75;}
+.sheet-btn:hover{background:#179066;}
 h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
 .subtitle{font-size:13px;color:#888;margin-bottom:16px;}
 .stats{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
@@ -78,6 +95,7 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
   <input type="text" id="search" placeholder="Buscar por nombre...">
   <button class="btn" onclick="expandAll()">Expandir todo</button>
   <button class="btn" onclick="collapseAll()">Colapsar</button>
+  <button class="btn sheet-btn" onclick="syncSheet()">🔄 Actualizar desde Sheet</button>
 </div>
 <div class="filters">
   <span class="filter-label">Filtrar:</span>
@@ -90,13 +108,21 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
   <button class="filter-btn" onclick="setFilter('permiso',this)">Permiso HubSpot</button>
   <button class="filter-btn" onclick="setFilter('validado',this)">Validado y entrado</button>
 </div>
+<div class="layout">
+<div class="main-col">
 <div id="tree"></div>
+</div>
+<div class="log-col">
+  <div class="log-title">📋 Log de cambios</div>
+  <div class="log-list" id="log-list"><div class="log-empty">Sin cambios aún</div></div>
+</div>
+</div>
 <div class="toast" id="toast"></div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDAQuaSxlLYn0sEUkjdx70QW2CFQAv7dkQ",
@@ -109,6 +135,135 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+const SHEET_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vS-CpZK78m6Sjz5450dGOL3042NUbPhDiUk3CYhAmarN8Ff2vccbL9E3xeQJyL-ohRcfqf3WVVVDz1B/pub?gid=0&single=true&output=csv';
+
+// Log functions
+function fmtTime(ts){
+  const d=ts?new Date(ts):new Date();
+  return d.toLocaleDateString('es-PR',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('es-PR',{hour:'2-digit',minute:'2-digit'});
+}
+function renderLog(entries){
+  const el=document.getElementById('log-list');
+  if(!entries||entries.length===0){el.innerHTML='<div class="log-empty">Sin cambios aún</div>';return;}
+  el.innerHTML=entries.map(e=>`<div class="log-entry"><div class="log-time">${fmtTime(e.ts)}</div><div class="log-msg">${e.msg}</div></div>`).join('');
+}
+async function addLog(msg){
+  try{
+    await addDoc(collection(db,'logs'),{msg,ts:Date.now()});
+  }catch(e){console.error(e);}
+}
+// Listen to log in real time
+onSnapshot(query(collection(db,'logs'),orderBy('ts','desc'),limit(50)),(snap)=>{
+  const entries=snap.docs.map(d=>d.data());
+  renderLog(entries);
+});
+
+// Sheet sync
+async function syncSheet(){
+  const btn=document.querySelector('.sheet-btn');
+  btn.textContent='⏳ Cargando...';btn.disabled=true;
+  try{
+    const res=await fetch(SHEET_URL);
+    const text=await res.text();
+    const rows=text.trim().split('\n').map(r=>r.split(','));
+    const headers=rows[0].map(h=>h.trim().replace(/"/g,'').toLowerCase());
+    // Find column indexes
+    const iVal=headers.findIndex(h=>h.includes('validado'));
+    const iName=headers.findIndex(h=>h.includes('nombre completo'));
+    const iSup=headers.findIndex(h=>h.includes('supervisor'));
+    const iRango=headers.findIndex(h=>h.includes('rango'));
+    const iEmail=headers.findIndex(h=>h.includes('corporateemail'));
+    if(iName===-1||iSup===-1){throw new Error('Columnas no encontradas');}
+
+    // Parse only TRUE rows
+    const sheetData={};
+    rows.slice(1).forEach(r=>{
+      const val=(r[iVal]||'').trim().replace(/"/g,'').toUpperCase();
+      if(val!=='TRUE') return;
+      const name=(r[iName]||'').trim().replace(/"/g,'');
+      if(!name) return;
+      sheetData[name]={
+        name,
+        sup:(r[iSup]||'').trim().replace(/"/g,''),
+        rango:(r[iRango]||'').trim().replace(/"/g,''),
+        email:iEmail>=0?(r[iEmail]||'').trim().replace(/"/g,''):'',
+      };
+    });
+
+    // Compare with current RAW
+    const currentMap={};
+    RAW.forEach(([n,s,r,e])=>currentMap[n]={name:n,sup:s,rango:r,email:e});
+
+    const logs=[];
+    let added=0,removed=0,changed=0;
+
+    // Find added
+    Object.keys(sheetData).forEach(name=>{
+      if(!currentMap[name]){
+        added++;
+        const d=sheetData[name];
+        RAW.push([d.name,d.sup,d.rango,d.email]);
+        emailMap[d.name]=d.email;
+        supMap[d.name]=d.sup;
+        rangoMap[d.name]=d.rango;
+        if(d.sup){if(!children[d.sup])children[d.sup]=[];if(!children[d.sup].includes(d.name))children[d.sup].push(d.name);}
+        logs.push(`<span class="log-add">➕ Agregado:</span> ${name}`);
+      } else {
+        // Check for changes
+        const cur=currentMap[name];
+        const changes=[];
+        if(cur.rango!==sheetData[name].rango) changes.push(`Rango: ${cur.rango}→${sheetData[name].rango}`);
+        if(cur.email!==sheetData[name].email) changes.push(`Email actualizado`);
+        if(cur.sup!==sheetData[name].sup) changes.push(`Supervisor: ${cur.sup}→${sheetData[name].sup}`);
+        if(changes.length>0){
+          changed++;
+          // Update RAW
+          const idx=RAW.findIndex(r=>r[0]===name);
+          if(idx>=0){RAW[idx]=[sheetData[name].name,sheetData[name].sup,sheetData[name].rango,sheetData[name].email];}
+          emailMap[name]=sheetData[name].email;
+          supMap[name]=sheetData[name].sup;
+          rangoMap[name]=sheetData[name].rango;
+          logs.push(`<span class="log-change">✏️ Cambio:</span> ${name} — ${changes.join(', ')}`);
+        }
+      }
+    });
+
+    // Find removed
+    Object.keys(currentMap).forEach(name=>{
+      if(!sheetData[name]&&name!=='Luis Enrique Cruz'){
+        removed++;
+        const idx=RAW.findIndex(r=>r[0]===name);
+        if(idx>=0) RAW.splice(idx,1);
+        delete emailMap[name];delete supMap[name];delete rangoMap[name];
+        Object.keys(children).forEach(k=>{children[k]=children[k].filter(c=>c!==name);});
+        logs.push(`<span class="log-remove">❌ Removido:</span> ${name}`);
+      }
+    });
+
+    // Rebuild children
+    Object.keys(children).forEach(k=>children[k]=[]);
+    RAW.forEach(([n,s])=>{if(s){if(!children[s])children[s]=[];if(!children[s].includes(n))children[s].push(n);}});
+
+    // Update stats
+    const supervisors=new Set(RAW.map(r=>r[1]).filter(Boolean));
+    document.getElementById('s-teams').textContent=[...supervisors].length;
+    document.querySelector('.stats .stat:nth-child(2) span').textContent=RAW.length;
+
+    const summary=`🔄 Sheet sincronizado — ${added} agregado${added!==1?'s':''}, ${removed} removido${removed!==1?'s':''}, ${changed} cambio${changed!==1?'s':''}`;
+    logs.unshift(`<span class="log-sync">${summary}</span>`);
+    for(const msg of logs) await addLog(msg);
+
+    showToast(`✓ ${added} agregados, ${removed} removidos, ${changed} cambios`);
+    renderTree();
+  }catch(e){
+    console.error(e);
+    showToast('Error al leer el Sheet');
+    await addLog(`<span class="log-remove">⚠️ Error al sincronizar Sheet: ${e.message}</span>`);
+  }
+  btn.textContent='🔄 Actualizar desde Sheet';btn.disabled=false;
+}
+window.syncSheet=syncSheet;
 
 const RAW=[
 ['Jose Pagan','Jose Fabian Fuentes Rios','Consultor','josefuentes9@planetsolarpr.net'],
@@ -309,6 +464,7 @@ async function setCheck(name,field,val){
 function getCheckCount(name){return CHECKS.filter(k=>getChecks(name)[k]).length;}
 function updateDoneCount(){document.getElementById('s-done').textContent=RAW.filter(([n])=>getCheckCount(n)===4).length;}
 
+// Filter: show node if it passes, dim it if it doesn't but has matching descendants
 function passesFilter(name){
   const c=getChecks(name);const cnt=CHECKS.filter(k=>c[k]).length;
   if(currentFilter==='all') return true;
@@ -340,7 +496,13 @@ function copyText(event,text,btnId){
 function toggleCheck(event,name,field){
   event.stopPropagation();
   const c=getChecks(name);
-  setCheck(name,field,!c[field]);
+  const newVal=!c[field];
+  setCheck(name,field,newVal);
+  const label=CHECK_LABELS[field];
+  const msg=newVal
+    ?`<span class="log-check">☑ ${name}</span> — ${label}`
+    :`<span class="log-check">☐ ${name}</span> — ${label} (desmarcado)`;
+  addLog(msg);
   renderTree();
 }
 function toggleNode(name){if(openNodes.has(name))openNodes.delete(name);else openNodes.add(name);renderTree();}
@@ -348,6 +510,7 @@ function expandAll(){RAW.forEach(([n])=>openNodes.add(n));Object.keys(children).
 function collapseAll(){openNodes=new Set(['Luis Enrique Cruz']);renderTree();}
 
 function buildNode(name,level){
+  // Skip entirely if no match at all
   if(!hasMatchingDescendant(name)) return '';
   const kids=(children[name]||[]).sort((a,b)=>a.localeCompare(b));
   const hasKids=kids.length>0;
@@ -363,6 +526,7 @@ function buildNode(name,level){
   const cnt=CHECKS.filter(k=>chks[k]).length;
   const kidCount=(children[name]||[]).length;
 
+  // Expand button style
   let expandClass='no-kids';
   let expandLabel='&nbsp;&nbsp;•&nbsp;&nbsp;';
   if(hasKids&&isOpen){expandClass='has-kids-open';expandLabel=`− ${kidCount} miembro${kidCount!==1?'s':''}`;}
