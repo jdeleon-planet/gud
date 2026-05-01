@@ -226,7 +226,7 @@ let RAW=[];
 
 const CHECKS=['bd','email','grupo','licencia','permisos','asignado','validado'];
 const CHECK_LABELS={bd:'Existe en BD',email:'Email en HubSpot',grupo:'Grupo en HubSpot',licencia:'Licencia Core',permisos:'Permisos correctos',asignado:'Grupo asignado',validado:'Validado ✅'};
-const emailMap={},supMap={},rangoMap={},pvMap={};
+const emailMap={},supMap={},rangoMap={},pvMap={},nombreEncontradoMap={},telefonoMap={};
 const children={};
 
 let openNodes=new Set(['Luis Enrique Cruz']);
@@ -246,8 +246,10 @@ function rebuildMaps(){
   Object.keys(supMap).forEach(k=>delete supMap[k]);
   Object.keys(rangoMap).forEach(k=>delete rangoMap[k]);
   Object.keys(pvMap).forEach(k=>delete pvMap[k]);
+  Object.keys(nombreEncontradoMap).forEach(k=>delete nombreEncontradoMap[k]);
+  Object.keys(telefonoMap).forEach(k=>delete telefonoMap[k]);
   Object.keys(children).forEach(k=>delete children[k]);
-  RAW.forEach(([n,s,r,e,pv])=>{emailMap[n]=e;supMap[n]=s;rangoMap[n]=r;pvMap[n]=pv||'';});
+  RAW.forEach(([n,s,r,e,pv,ne,tel])=>{emailMap[n]=e;supMap[n]=s;rangoMap[n]=r;pvMap[n]=pv||'';nombreEncontradoMap[n]=ne||'';telefonoMap[n]=tel||'';});
   RAW.forEach(([n,s])=>{if(s){if(!children[s])children[s]=[];if(!children[s].includes(n))children[s].push(n);}});
   const supervisors=new Set(RAW.map(r=>r[1]).filter(Boolean));
   document.getElementById('s-teams').textContent=[...supervisors].length;
@@ -264,6 +266,8 @@ function parseSheetCSV(text){
   const iRango=headers.findIndex(h=>h.includes('rango'));
   const iEmail=headers.findIndex(h=>h.includes('corporateemail'));
   const iPV=headers.findIndex(h=>h.includes('pv'));
+  const iNombreEncontrado=headers.findIndex(h=>h.includes('nombre encontrado'));
+  const iTelefono=headers.findIndex(h=>h.includes('telefono'));
   if(iName===-1||iSup===-1) throw new Error('Columnas no encontradas');
   const sheetData={};
   rows.slice(1).forEach(r=>{
@@ -277,6 +281,8 @@ function parseSheetCSV(text){
       rango:(r[iRango]||'').trim().replace(/"/g,''),
       email:iEmail>=0?(r[iEmail]||'').trim().replace(/"/g,''):'',
       pv:iPV>=0?(r[iPV]||'').trim().replace(/"/g,''):'',
+      nombreEncontrado:iNombreEncontrado>=0?(r[iNombreEncontrado]||'').trim().replace(/"/g,''):'',
+      telefono:iTelefono>=0?(r[iTelefono]||'').trim().replace(/"/g,''):'',
     };
   });
   return sheetData;
@@ -291,7 +297,7 @@ async function applySheetData(sheetData, previousData, logChanges=true){
   Object.keys(sheetData).forEach(name=>{
     if(!previousData[name]){
       added++;
-      RAW.push([sheetData[name].name,sheetData[name].sup,sheetData[name].rango,sheetData[name].email,sheetData[name].pv||'']);
+      RAW.push([sheetData[name].name,sheetData[name].sup,sheetData[name].rango,sheetData[name].email,sheetData[name].pv||'',sheetData[name].nombreEncontrado||'',sheetData[name].telefono||'']);
       if(logChanges) logs.push({msg:`<span class="log-add">➕ Agregado:</span> ${name}`,rawName:name});
     } else {
       const cur=previousData[name];
@@ -299,7 +305,7 @@ async function applySheetData(sheetData, previousData, logChanges=true){
       if(cur.rango!==sheetData[name].rango) changes.push(`Rango: ${cur.rango}→${sheetData[name].rango}`);
       if(cur.email!==sheetData[name].email) changes.push(`Email actualizado`);
       if(cur.sup!==sheetData[name].sup) changes.push(`Supervisor: ${cur.sup}→${sheetData[name].sup}`);
-      RAW.push([sheetData[name].name,sheetData[name].sup,sheetData[name].rango,sheetData[name].email,sheetData[name].pv||'']);
+      RAW.push([sheetData[name].name,sheetData[name].sup,sheetData[name].rango,sheetData[name].email,sheetData[name].pv||'',sheetData[name].nombreEncontrado||'',sheetData[name].telefono||'']);
       if(changes.length>0){
         changed++;
         if(logChanges) logs.push({msg:`<span class="log-change">✏️ Cambio:</span> ${name} — ${changes.join(', ')}`,rawName:name});
@@ -509,15 +515,17 @@ function buildNode(name,level){
     <div class="node-row ${lc}" style="${nodeOpacity}">
       <button class="expand-btn ${expandClass}" onclick="toggleNode('${sn}')">${expandLabel}</button>
       <div class="node-card" onclick="toggleNode('${sn}')">
-        <div class="name-row">
-          <span class="node-name">${name}</span>
-          <button class="copy-btn" id="${nb}" onclick="copyText(event,'${name.replace(/'/g,"\\'")}','${nb}')">Nombre</button>
-        </div>
+        ${nombreEncontradoMap[name]?`<div class="name-row" onclick="event.stopPropagation()">
+          <span class="node-name">${nombreEncontradoMap[name]}</span>
+          <button class="copy-btn" id="${nb}" onclick="copyText(event,'${nombreEncontradoMap[name].replace(/'/g,"\\'")}','${nb}')">Copiar</button>
+        </div>`:`<div class="name-row"><span class="node-name">${name}</span></div>`}
+        <div style="font-size:11px;opacity:0.7;margin-bottom:2px;">${name}</div>
         <div class="node-pos">${rango}${pvMap[name]?' • '+pvMap[name]:''}</div>
         <div class="email-row" onclick="event.stopPropagation()">
           <span class="email-text" title="${email}">${email||'sin email'}</span>
           ${email?`<button class="copy-btn" id="${eb}" onclick="copyText(event,'${email}','${eb}')">Email</button>`:''}
         </div>
+        ${telefonoMap[name]?`<div style="font-size:11px;opacity:0.85;margin-bottom:6px;">📞 ${telefonoMap[name]}</div>`:''}
         ${supMap[name]?`<div class="email-row" onclick="event.stopPropagation()" style="margin-bottom:6px;">
           <span style="font-size:11px;opacity:0.8;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">👤 ${supMap[name]}</span>
           <button class="copy-btn" id="sb_${nb}" onclick="copyText(event,'${(supMap[name]||'').replace(/'/g,"\\'")}','sb_${nb}')">Líder</button>
