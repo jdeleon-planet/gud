@@ -259,7 +259,7 @@ function parseSheetCSV(text){
   const rows=text.trim().split('\n').map(r=>r.split(','));
   const headers=rows[0].map(h=>h.trim().replace(/"/g,'').toLowerCase());
   const iVal=headers.findIndex(h=>h.includes('validado'));
-  const iName=headers.findIndex(h=>h.includes('nombre encontrado'));
+  const iName=headers.findIndex(h=>h.includes('nombre completo'));
   const iSup=headers.findIndex(h=>h.includes('supervisor'));
   const iRango=headers.findIndex(h=>h.includes('rango'));
   const iEmail=headers.findIndex(h=>h.includes('corporateemail'));
