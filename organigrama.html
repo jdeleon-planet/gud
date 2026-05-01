@@ -180,6 +180,15 @@ const SHEET_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vS-CpZK78m6Sjz5
 
 // Log functions
 let allLogs=[];
+let sheetLoaded=false;
+let checksLoaded=false;
+
+function tryUpdateDoneCount(){
+  if(sheetLoaded&&checksLoaded){
+    document.getElementById('s-done').textContent=RAW.filter(([n])=>getCheckCount(n)===7).length;
+  }
+}
+
 function fmtTime(ts){
   const d=ts?new Date(ts):new Date();
   return d.toLocaleDateString('es-PR',{month:'short',day:'numeric',year:'numeric'})+' • '+d.toLocaleTimeString('es-PR',{hour:'2-digit',minute:'2-digit'});
@@ -188,7 +197,13 @@ function renderLog(){
   const q=(document.getElementById('log-search').value||'').toLowerCase().trim();
   const el=document.getElementById('log-container');
   if(!allLogs.length){el.innerHTML='<div class="log-empty">Sin cambios aún</div>';return;}
-  const filtered=q?allLogs.filter(e=>(e.rawName||'').toLowerCase().includes(q)):allLogs;
+  // Search by rawName OR by email (stored in rawEmail) OR by msg content
+  const filtered=q?allLogs.filter(e=>{
+    const nameMatch=(e.rawName||'').toLowerCase().includes(q);
+    const emailMatch=(e.rawEmail||'').toLowerCase().includes(q);
+    const msgMatch=(e.msg||'').toLowerCase().includes(q);
+    return nameMatch||emailMatch||msgMatch;
+  }):allLogs;
   if(!filtered.length){el.innerHTML='<div class="log-empty">No encontrado</div>';return;}
   if(q){
     const grouped={};
@@ -217,7 +232,8 @@ onSnapshot(query(collection(db,'logs'),orderBy('ts','desc'),limit(200)),(snap)=>
 });
 
 async function addLog(msg, rawName=''){
-  try{ await addDoc(collection(db,'logs'),{msg,rawName,ts:Date.now()}); }
+  const rawEmail=emailMap[rawName]||'';
+  try{ await addDoc(collection(db,'logs'),{msg,rawName,rawEmail,ts:Date.now()}); }
   catch(e){ console.error(e); }
 }
 
@@ -353,6 +369,8 @@ async function autoLoadSheet(){
 
     const isFirstLoad=Object.keys(previousData).length===0;
     await applySheetData(sheetData, previousData, !isFirstLoad);
+    sheetLoaded=true;
+    tryUpdateDoneCount();
     setSyncStatus('ok');
   }catch(e){
     console.error(e);
@@ -397,8 +415,9 @@ onSnapshot(collection(db,'checks'),(snapshot)=>{
     if(change.type==='removed') delete checksCache[name];
     else checksCache[name]=change.doc.data();
   });
+  checksLoaded=true;
   setSyncStatus('ok');
-  updateDoneCount();
+  tryUpdateDoneCount();
   renderTree();
 },(err)=>{console.error(err);setSyncStatus('err');});
 
@@ -413,7 +432,7 @@ async function setCheck(name,field,val){
   catch(e){console.error(e);setSyncStatus('err');}
 }
 function getCheckCount(name){return CHECKS.filter(k=>getChecks(name)[k]).length;}
-function updateDoneCount(){document.getElementById('s-done').textContent=RAW.filter(([n])=>getCheckCount(n)===7).length;}
+function updateDoneCount(){tryUpdateDoneCount();}
 
 // Filter: show node if it passes, dim it if it doesn't but has matching descendants
 function passesFilter(name){
