@@ -162,7 +162,7 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot, collection, addDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDAQuaSxlLYn0sEUkjdx70QW2CFQAv7dkQ",
@@ -396,6 +396,8 @@ async function autoLoadSheet(){
     sheetLoaded=true;
     tryUpdateDoneCount();
     setSyncStatus('ok');
+    // Run migration after sheet is loaded so emailMap is populated
+    await migrateChecksToEmail();
   }catch(e){
     console.error(e);
     setSyncStatus('err');
@@ -435,9 +437,9 @@ window.syncSheet=syncSheet;
 
 onSnapshot(collection(db,'checks'),(snapshot)=>{
   snapshot.docChanges().forEach(change=>{
-    const name=change.doc.id.replace(/_/g,' ');
-    if(change.type==='removed') delete checksCache[name];
-    else checksCache[name]=change.doc.data();
+    const key=change.doc.id;
+    if(change.type==='removed') delete checksCache[key];
+    else checksCache[key]=change.doc.data();
   });
   checksLoaded=true;
   setSyncStatus('ok');
@@ -445,13 +447,47 @@ onSnapshot(collection(db,'checks'),(snapshot)=>{
   renderTree();
 },(err)=>{console.error(err);setSyncStatus('err');});
 
-function getChecks(name){return checksCache[name]||{};}
+// Migration: move checks from name-based keys to email-based keys (runs once)
+async function migrateChecksToEmail(){
+  try{
+    const snap=await getDocs(collection(db,'checks'));
+    const migrated=[];
+    for(const docSnap of snap.docs){
+      const key=docSnap.id;
+      if(key.includes('_at_')) continue; // already migrated
+      const name=key.replace(/_/g,' ');
+      const email=emailMap[name]||'';
+      if(!email) continue;
+      const data=docSnap.data();
+      if(!data||Object.keys(data).length===0) continue;
+      const emailKey=emailToKey(email);
+      await setDoc(doc(db,'checks',emailKey),data);
+      await deleteDoc(doc(db,'checks',key));
+      migrated.push(name);
+    }
+    if(migrated.length>0){
+      await addLog(`<span class="log-sync">🔑 Migración completada — ${migrated.length} usuarios migrados a key de email</span>`,'');
+      showToast(`✓ ${migrated.length} usuarios migrados`);
+    }
+  }catch(e){console.error('Migration error:',e);}
+}
+
+function emailToKey(email){return email.replace(/\./g,'_').replace(/@/g,'_at_');}
+function getChecks(name){
+  const email=emailMap[name]||'';
+  if(email) return checksCache[emailToKey(email)]||{};
+  // fallback to name key for users without email
+  return checksCache[name.replace(/ /g,'_')]||{};
+}
 async function setCheck(name,field,val){
   setSyncStatus('loading');
-  const key=name.replace(/ /g,'_');
+  const email=emailMap[name]||'';
+  const key=email?emailToKey(email):name.replace(/ /g,'_');
   const cur={...getChecks(name)};
   cur[field]=val;
-  checksCache[name]=cur;
+  // Update cache
+  if(email) checksCache[emailToKey(email)]=cur;
+  else checksCache[name.replace(/ /g,'_')]=cur;
   try{await setDoc(doc(db,'checks',key),cur);setSyncStatus('ok');}
   catch(e){console.error(e);setSyncStatus('err');}
 }
