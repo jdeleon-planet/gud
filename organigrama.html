@@ -272,10 +272,31 @@ function rebuildMaps(){
   document.querySelector('.stats .stat:nth-child(2) span').textContent=RAW.length;
 }
 
+// Robust CSV parser that handles commas inside quoted fields
+function parseCSVLine(line){
+  const result=[];
+  let cur='';
+  let inQuotes=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='"'){
+      if(inQuotes&&line[i+1]==='"'){cur+='"';i++;}
+      else inQuotes=!inQuotes;
+    } else if(ch===','&&!inQuotes){
+      result.push(cur.trim());cur='';
+    } else {
+      cur+=ch;
+    }
+  }
+  result.push(cur.trim());
+  return result;
+}
+
 // Parse CSV text into sheetData object
 function parseSheetCSV(text){
-  const rows=text.trim().split('\n').map(r=>r.split(','));
-  const headers=rows[0].map(h=>h.trim().replace(/"/g,'').toLowerCase());
+  const lines=text.trim().split('\n');
+  const rows=lines.map(l=>parseCSVLine(l));
+  const headers=rows[0].map(h=>h.replace(/"/g,'').toLowerCase().trim());
   const iVal=headers.findIndex(h=>h.includes('validado'));
   const iName=headers.findIndex(h=>h.includes('nombre completo'));
   const iSup=headers.findIndex(h=>h.includes('supervisor'));
@@ -287,18 +308,18 @@ function parseSheetCSV(text){
   if(iName===-1||iSup===-1) throw new Error('Columnas no encontradas');
   const sheetData={};
   rows.slice(1).forEach(r=>{
-    const val=(r[iVal]||'').trim().replace(/"/g,'').toUpperCase();
+    const val=(r[iVal]||'').trim().toUpperCase();
     if(val!=='TRUE') return;
-    const name=(r[iName]||'').trim().replace(/"/g,'');
+    const name=(r[iName]||'').trim();
     if(!name) return;
     sheetData[name]={
       name,
-      sup:(r[iSup]||'').trim().replace(/"/g,''),
-      rango:(r[iRango]||'').trim().replace(/"/g,''),
-      email:iEmail>=0?(r[iEmail]||'').trim().replace(/"/g,''):'',
-      pv:iPV>=0?(r[iPV]||'').trim().replace(/"/g,''):'',
-      nombreEncontrado:iNombreEncontrado>=0?(r[iNombreEncontrado]||'').trim().replace(/"/g,''):'',
-      telefono:iTelefono>=0?(r[iTelefono]||'').trim().replace(/"/g,''):'',
+      sup:(r[iSup]||'').trim(),
+      rango:(r[iRango]||'').trim(),
+      email:iEmail>=0?(r[iEmail]||'').trim():'',
+      pv:iPV>=0?(r[iPV]||'').trim():'',
+      nombreEncontrado:iNombreEncontrado>=0?(r[iNombreEncontrado]||'').trim():'',
+      telefono:iTelefono>=0?(r[iTelefono]||'').trim():'',
     };
   });
   return sheetData;
