@@ -365,6 +365,9 @@ async function applySheetData(sheetData, previousData, logChanges=true){
     logs.unshift({msg:`<span class="log-sync">${summary}</span>`,rawName:''});
     for(const entry of logs) await addLog(entry.msg,entry.rawName);
     showToast(`✓ ${added} agregados, ${removed} removidos, ${changed} cambios`);
+  } else if(logChanges){
+    await addLog(`<span class="log-sync">🔄 Sheet sincronizado — sin cambios</span>`,'');
+    showToast('✓ Sin cambios');
   }
 
   // Save current sheet state to Firebase
