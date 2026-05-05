@@ -117,9 +117,10 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
 <p class="subtitle">Jerarquía de equipos GUD</p>
 <div class="stats">
   <div class="stat"><span id="s-teams">—</span>equipos</div>
-  <div class="stat"><span id="s-users">151</span>usuarios</div>
+  <div class="stat"><span id="s-users">—</span>usuarios</div>
   <div class="stat"><span>6</span>niveles</div>
   <div class="stat"><span id="s-done">0</span>completados ✅</div>
+  <div class="stat" id="s-filter-wrap" style="display:none;border-color:#378ADD;"><span id="s-filter">0</span><span style="font-size:11px;color:#378ADD;">filtrados</span></div>
   <span class="sync-status sync-loading" id="sync-status">Conectando...</span>
 </div>
 <div class="toolbar">
@@ -183,9 +184,18 @@ let allLogs=[];
 let sheetLoaded=false;
 let checksLoaded=false;
 
+function updateFilterCount(){
+  const wrap=document.getElementById('s-filter-wrap');
+  const el=document.getElementById('s-filter');
+  if(currentFilter==='all'){wrap.style.display='none';return;}
+  const count=RAW.filter(([n])=>passesFilter(n)).length;
+  el.textContent=count;
+  wrap.style.display='';
+}
 function tryUpdateDoneCount(){
   if(sheetLoaded&&checksLoaded){
     document.getElementById('s-done').textContent=RAW.filter(([n])=>getCheckCount(n)===7).length;
+    updateFilterCount();
   }
 }
 
@@ -524,6 +534,7 @@ function setFilter(f,btn){
   document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   renderTree();
+  updateFilterCount();
 }
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity=1;setTimeout(()=>t.style.opacity=0,1800);}
 function copyText(event,text,btnId){
