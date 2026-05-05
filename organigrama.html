@@ -684,7 +684,57 @@ function renderTree(){
     }).join('');
     return;
   }
-  tree.innerHTML=buildNode('Luis Enrique Cruz',0);
+
+  // Build main tree
+  let html = buildNode('Luis Enrique Cruz',0);
+
+  // Find orphaned users — those not connected to the tree
+  const allNames = new Set(RAW.map(r=>r[0]));
+  const connected = new Set();
+  function markConnected(name){
+    connected.add(name);
+    (children[name]||[]).forEach(k=>markConnected(k));
+  }
+  markConnected('Luis Enrique Cruz');
+
+  const orphans = RAW.filter(([n])=>!connected.has(n) && shouldShowNode(n));
+
+  if(orphans.length>0){
+    html+=`<div style="margin-top:24px;padding-top:16px;border-top:2px dashed #e0e0e0;">
+      <div style="font-size:12px;font-weight:700;color:#c0392b;margin-bottom:12px;">⚠️ Sin conexión al árbol (${orphans.length})</div>
+      ${orphans.map(([n])=>{
+        const em=emailMap[n]||'';
+        const rango=rangoMap[n]||'';
+        const chks=getChecks(n);
+        const cnt=CHECKS.filter(k=>chks[k]).length;
+        const nb='nb_'+(btnCounter++);
+        const eb='eb_'+(btnCounter++);
+        const sn=n.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        return`<div style="background:#fff;border:1px solid #e0b0b0;border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+          ${nombreEncontradoMap[n]?`<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;" onclick="event.stopPropagation()">
+            <span style="font-size:13px;font-weight:700;color:#1a1a1a;flex:1;">${nombreEncontradoMap[n]}</span>
+            <button class="copy-btn" id="${nb}" onclick="copyText(event,'${nombreEncontradoMap[n].replace(/'/g,"\\'")}','${nb}')" style="background:#042C53;color:#fff;">Copiar</button>
+          </div>`:`<div style="font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:2px;">${n}</div>`}
+          <div style="font-size:11px;color:#888;margin-bottom:2px;">${n}</div>
+          <div style="font-size:11px;color:#666;margin-bottom:6px;">${rango}${pvMap[n]?' • '+pvMap[n]:''}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;" onclick="event.stopPropagation()">
+            <span style="font-size:11px;font-family:monospace;color:#444;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${em||'sin email'}</span>
+            ${em?`<button id="${eb}" onclick="copyText(event,'${em}','${eb}')" style="font-size:10px;font-weight:700;padding:4px 9px;border-radius:5px;cursor:pointer;border:none;background:#185FA5;color:#fff;">Email</button>`:''}
+          </div>
+          ${supMap[n]?`<div style="font-size:11px;color:#c0392b;margin-bottom:6px;">⚠️ Supervisor no encontrado: ${supMap[n]}</div>`:''}
+          <div style="height:4px;border-radius:2px;background:#e0e0e0;margin-bottom:8px;overflow:hidden;"><div style="height:100%;background:#1D9E75;width:${Math.round(cnt*100/7)}%;"></div></div>
+          <div style="display:flex;flex-direction:column;gap:4px;" onclick="event.stopPropagation()">
+            ${CHECKS.map(k=>`<label style="display:flex;align-items:center;gap:7px;cursor:pointer;">
+              <input type="checkbox" ${chks[k]?'checked':''} onchange="toggleCheck(event,'${sn}','${k}')" style="width:14px;height:14px;cursor:pointer;accent-color:#1D9E75;">
+              <span style="font-size:11px;color:#333;">${CHECK_LABELS[k]}</span>
+            </label>`).join('')}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  tree.innerHTML=html;
 }
 
 window.toggleNode=toggleNode;
