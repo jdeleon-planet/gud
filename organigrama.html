@@ -514,18 +514,15 @@ function passesFilter(name){
   return !!c[currentFilter];
 }
 function hasMatchingDescendant(name){
-  // For 'all' filter always show
   if(currentFilter==='all') return true;
-  // Check self
   if(passesFilter(name)) return true;
-  // Check all descendants
   return (children[name]||[]).some(k=>hasMatchingDescendant(k));
 }
-// Specifically for incomplete: a completed node should be visible only if it has incomplete descendants
 function shouldShowNode(name){
   if(currentFilter==='all') return true;
+  // Always show if node itself passes
   if(passesFilter(name)) return true;
-  // Show as container only if has matching descendants below
+  // Show as container if ANY descendant passes — regardless of whether this node passes
   return (children[name]||[]).some(k=>hasMatchingDescendant(k));
 }
 
@@ -599,7 +596,7 @@ function buildNode(name,level){
   else if(hasKids&&!isOpen){expandClass='has-kids-closed';expandLabel=`+ ${kidsLabel}`;}
 
   // If node doesn't pass filter but is shown as container, fade it slightly
-  const nodeOpacity=!passes?'opacity:0.45;':'';
+  const nodeOpacity=(!passes&&hasMatchingDescendant(name))?'opacity:0.45;':(!passes?'opacity:0.45;':'');
 
   let html=`<div class="node-wrap">
     <div class="node-row ${lc}" style="${nodeOpacity}">
