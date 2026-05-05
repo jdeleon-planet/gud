@@ -194,7 +194,8 @@ function updateFilterCount(){
 }
 function tryUpdateDoneCount(){
   if(sheetLoaded&&checksLoaded){
-    document.getElementById('s-done').textContent=RAW.filter(([n])=>getCheckCount(n)===7).length;
+    const validated=RAW.filter(([n])=>!notValidatedMap[n]);
+    document.getElementById('s-done').textContent=validated.filter(([n])=>getCheckCount(n)===7).length;
     updateFilterCount();
   }
 }
@@ -252,7 +253,7 @@ let RAW=[];
 
 const CHECKS=['bd','email','grupo','licencia','permisos','asignado','validado'];
 const CHECK_LABELS={bd:'Existe en BD',email:'Email en HubSpot',grupo:'Grupo en HubSpot',licencia:'Licencia Core',permisos:'Permisos correctos',asignado:'Grupo asignado',validado:'Validado ✅'};
-const emailMap={},supMap={},rangoMap={},pvMap={},nombreEncontradoMap={},telefonoMap={};
+const emailMap={},supMap={},rangoMap={},pvMap={},nombreEncontradoMap={},telefonoMap={},notValidatedMap={};
 const children={};
 
 let openNodes=new Set(['Luis Enrique Cruz']);
@@ -274,12 +275,17 @@ function rebuildMaps(){
   Object.keys(pvMap).forEach(k=>delete pvMap[k]);
   Object.keys(nombreEncontradoMap).forEach(k=>delete nombreEncontradoMap[k]);
   Object.keys(telefonoMap).forEach(k=>delete telefonoMap[k]);
+  Object.keys(notValidatedMap).forEach(k=>delete notValidatedMap[k]);
   Object.keys(children).forEach(k=>delete children[k]);
-  RAW.forEach(([n,s,r,e,pv,ne,tel])=>{emailMap[n]=e;supMap[n]=s;rangoMap[n]=r;pvMap[n]=pv||'';nombreEncontradoMap[n]=ne||'';telefonoMap[n]=tel||'';});
+  RAW.forEach(([n,s,r,e,pv,ne,tel,nv])=>{
+    emailMap[n]=e;supMap[n]=s;rangoMap[n]=r;pvMap[n]=pv||'';
+    nombreEncontradoMap[n]=ne||'';telefonoMap[n]=tel||'';
+    if(nv) notValidatedMap[n]=true;
+  });
   RAW.forEach(([n,s])=>{if(s){if(!children[s])children[s]=[];if(!children[s].includes(n))children[s].push(n);}});
   const supervisors=new Set(RAW.map(r=>r[1]).filter(Boolean));
   document.getElementById('s-teams').textContent=[...supervisors].length;
-  document.querySelector('.stats .stat:nth-child(2) span').textContent=RAW.length;
+  document.querySelector('.stats .stat:nth-child(2) span').textContent=RAW.filter(([n,,,,,,, nv])=>!nv).length;
 }
 
 // Robust CSV parser that handles commas inside quoted fields
@@ -317,12 +323,11 @@ function parseSheetCSV(text){
   const iTelefono=headers.findIndex(h=>h.includes('telefono'));
   if(iName===-1||iSup===-1) throw new Error('Columnas no encontradas');
   const sheetData={};
+  const allRows={}; // all rows regardless of TRUE
   rows.slice(1).forEach(r=>{
-    const val=(r[iVal]||'').trim().toUpperCase();
-    if(val!=='TRUE') return;
     const name=(r[iName]||'').trim();
     if(!name) return;
-    sheetData[name]={
+    const entry={
       name,
       sup:(r[iSup]||'').trim(),
       rango:(r[iRango]||'').trim(),
@@ -330,8 +335,26 @@ function parseSheetCSV(text){
       pv:iPV>=0?(r[iPV]||'').trim():'',
       nombreEncontrado:iNombreEncontrado>=0?(r[iNombreEncontrado]||'').trim():'',
       telefono:iTelefono>=0?(r[iTelefono]||'').trim():'',
+      validated:false,
     };
+    allRows[name]=entry;
+    const val=(r[iVal]||'').trim().toUpperCase();
+    if(val==='TRUE'){
+      entry.validated=true;
+      sheetData[name]=entry;
+    }
   });
+  // Add supervisors that are not TRUE but needed for the tree
+  function addSupervisors(name){
+    const entry=allRows[name];
+    if(!entry) return;
+    const sup=entry.sup;
+    if(sup&&!sheetData[sup]&&allRows[sup]){
+      sheetData[sup]={...allRows[sup],validated:false,notValidated:true};
+      addSupervisors(sup);
+    }
+  }
+  Object.keys(sheetData).forEach(name=>addSupervisors(name));
   return sheetData;
 }
 
@@ -344,15 +367,15 @@ async function applySheetData(sheetData, previousData, logChanges=true){
   Object.keys(sheetData).forEach(name=>{
     if(!previousData[name]){
       added++;
-      RAW.push([sheetData[name].name,sheetData[name].sup,sheetData[name].rango,sheetData[name].email,sheetData[name].pv||'',sheetData[name].nombreEncontrado||'',sheetData[name].telefono||'']);
-      if(logChanges) logs.push({msg:`<span class="log-add">➕ Agregado:</span> ${name}`,rawName:name});
+      RAW.push([sheetData[name].name,sheetData[name].sup,sheetData[name].rango,sheetData[name].email,sheetData[name].pv||'',sheetData[name].nombreEncontrado||'',sheetData[name].telefono||'',sheetData[name].notValidated||false]);
+      if(logChanges&&sheetData[name].validated) logs.push({msg:`<span class="log-add">➕ Agregado:</span> ${name}`,rawName:name});
     } else {
       const cur=previousData[name];
       const changes=[];
       if(cur.rango!==sheetData[name].rango) changes.push(`Rango: ${cur.rango}→${sheetData[name].rango}`);
       if(cur.email!==sheetData[name].email) changes.push(`Email actualizado`);
       if(cur.sup!==sheetData[name].sup) changes.push(`Supervisor: ${cur.sup}→${sheetData[name].sup}`);
-      RAW.push([sheetData[name].name,sheetData[name].sup,sheetData[name].rango,sheetData[name].email,sheetData[name].pv||'',sheetData[name].nombreEncontrado||'',sheetData[name].telefono||'']);
+      RAW.push([sheetData[name].name,sheetData[name].sup,sheetData[name].rango,sheetData[name].email,sheetData[name].pv||'',sheetData[name].nombreEncontrado||'',sheetData[name].telefono||'',sheetData[name].notValidated||false]);
       if(changes.length>0){
         changed++;
         if(logChanges) logs.push({msg:`<span class="log-change">✏️ Cambio:</span> ${name} — ${changes.join(', ')}`,rawName:name});
@@ -506,6 +529,7 @@ function updateDoneCount(){tryUpdateDoneCount();}
 
 // Filter: show node if it passes, dim it if it doesn't but has matching descendants
 function passesFilter(name){
+  if(notValidatedMap[name]) return currentFilter==='all'; // non-validated only show in "all"
   const c=getChecks(name);const cnt=CHECKS.filter(k=>c[k]).length;
   if(currentFilter==='all') return true;
   if(currentFilter==='incomplete') return cnt<7;
@@ -607,6 +631,7 @@ function buildNode(name,level){
           <button class="copy-btn" id="${nb}" onclick="copyText(event,'${nombreEncontradoMap[name].replace(/'/g,"\\'")}','${nb}')">Copiar</button>
         </div>`:`<div class="name-row"><span class="node-name">${name}</span></div>`}
         <div style="font-size:11px;opacity:0.7;margin-bottom:2px;">${name}</div>
+        ${notValidatedMap[name]?`<div style="font-size:11px;font-weight:600;color:#e67e22;margin-bottom:4px;">⚠️ No validado en Sheet</div>`:''}
         <div class="node-pos">${rango}${pvMap[name]?' • '+pvMap[name]:''}</div>
         <div class="email-row" onclick="event.stopPropagation()">
           <span class="email-text" title="${email}">${email||'sin email'}</span>
@@ -617,10 +642,11 @@ function buildNode(name,level){
           <span style="font-size:11px;opacity:0.8;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">👤 ${supMap[name]}</span>
           <button class="copy-btn" id="sb_${nb}" onclick="copyText(event,'${(supMap[name]||'').replace(/'/g,"\\'")}','sb_${nb}')">Líder</button>
         </div>`:''}
-        <div class="progress-bar"><div class="progress-fill" style="width:${Math.round(cnt*100/7)}%"></div></div>
+        ${!notValidatedMap[name]?`<div class="progress-bar"><div class="progress-fill" style="width:${Math.round(cnt*100/7)}%"></div></div>
         <div class="checks" onclick="event.stopPropagation()">
           ${CHECKS.map(k=>`<label class="check-item"><input type="checkbox" ${chks[k]?'checked':''} onchange="toggleCheck(event,'${sn}','${k}')"><span class="check-label">${CHECK_LABELS[k]}</span></label>`).join('')}
-        </div>
+        </div>`:''}
+
       </div>
     </div>`;
 
