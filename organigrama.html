@@ -722,6 +722,24 @@ function renderTree(){
   const tree=document.getElementById('tree');
   if(q){
     const matches=RAW.filter(([n])=>n.toLowerCase().includes(q)||(emailMap[n]||'').toLowerCase().includes(q));
+    if(currentView==='org'){
+      tree.innerHTML=`<div class="org-scroll-wrap"><div class="org-view" style="display:flex;flex-wrap:wrap;gap:12px;justify-content:flex-start;">
+        ${matches.map(([n])=>{
+          const rango=rangoMap[n]||'';
+          const notVal=notValidatedMap[n]?'not-validated':'';
+          const displayName=nombreEncontradoMap[n]||n;
+          const sn=n.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+          return`<div class="org-node-wrap" style="padding:0;">
+            <div class="org-node ${notVal}" style="min-width:140px;max-width:180px;" title="${n}">
+              <div>${displayName}</div>
+              ${rango?`<div class="org-node-pos">${rango}</div>`:''}
+              ${notVal?`<div style="font-size:9px;margin-top:2px;">⚠️ No validado</div>`:''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div></div>`;
+      return;
+    }
     tree.innerHTML=matches.map(([n])=>{
       const em=emailMap[n]||'';const nb='nb_'+(btnCounter++);const eb='eb_'+(btnCounter++);
       const chks=getChecks(n);const cnt=CHECKS.filter(k=>chks[k]).length;
