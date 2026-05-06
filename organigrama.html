@@ -109,6 +109,19 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
 .log-entry:last-child{border-bottom:none;}
 .log-entry-time{font-size:10px;color:#bbb;margin-bottom:2px;font-weight:500;}
 .log-entry-msg{font-size:12px;color:#444;line-height:1.4;}
+/* Org chart view */
+.org-view{overflow-x:auto;padding:20px 0;}
+.org-level{display:flex;justify-content:center;gap:0;position:relative;margin-bottom:0;}
+.org-node-wrap{display:flex;flex-direction:column;align-items:center;position:relative;padding:0 8px;}
+.org-node{background:#4472C4;color:#fff;border-radius:6px;padding:7px 12px;font-size:12px;font-weight:600;text-align:center;cursor:pointer;white-space:nowrap;min-width:120px;max-width:160px;position:relative;z-index:1;}
+.org-node:hover{opacity:0.85;}
+.org-node.not-validated{background:#e8a838;color:#fff;}
+.org-node-pos{font-size:10px;font-weight:400;opacity:0.85;margin-top:2px;}
+.org-connector-down{width:2px;height:20px;background:#9DC3E6;margin:0 auto;}
+.org-connector-up{width:2px;height:20px;background:#9DC3E6;margin:0 auto;}
+.org-children{display:flex;justify-content:center;position:relative;}
+.org-children::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:calc(100% - 40px);height:2px;background:#9DC3E6;}
+.org-children-single::before{display:none;}
 </style>
 </head>
 <body>
@@ -131,6 +144,10 @@ h1{font-size:22px;font-weight:700;color:#042C53;margin-bottom:2px;}
   <button class="btn" onclick="expandAll()">Expandir todo</button>
   <button class="btn" onclick="collapseAll()">Colapsar</button>
   <button class="btn sheet-btn" onclick="syncSheet()">🔄 Actualizar desde Sheet</button>
+  <div style="display:flex;border:1px solid #ddd;border-radius:8px;overflow:hidden;">
+    <button id="view-tree-btn" onclick="setView('tree')" style="font-size:12px;padding:8px 12px;border:none;cursor:pointer;background:#042C53;color:#fff;white-space:nowrap;">🌳 Detalle</button>
+    <button id="view-org-btn" onclick="setView('org')" style="font-size:12px;padding:8px 12px;border:none;cursor:pointer;background:#fff;color:#333;white-space:nowrap;">📊 Organigrama</button>
+  </div>
 </div>
 <div class="filters">
   <span class="filter-label">Filtrar:</span>
@@ -578,6 +595,43 @@ function toggleCheck(event,name,field){
   addLog(msg,name);
   renderTree();
 }
+let currentView='tree';
+function setView(v){
+  currentView=v;
+  document.getElementById('view-tree-btn').style.background=v==='tree'?'#042C53':'#fff';
+  document.getElementById('view-tree-btn').style.color=v==='tree'?'#fff':'#333';
+  document.getElementById('view-org-btn').style.background=v==='org'?'#042C53':'#fff';
+  document.getElementById('view-org-btn').style.color=v==='org'?'#fff':'#333';
+  renderTree();
+}
+window.setView=setView;
+
+function buildOrgNode(name,level){
+  const kids=(children[name]||[]).sort((a,b)=>a.localeCompare(b));
+  const hasKids=kids.length>0;
+  const isOpen=openNodes.has(name);
+  const rango=rangoMap[name]||'';
+  const sn=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  const notVal=notValidatedMap[name]?'not-validated':'';
+  const displayName=nombreEncontradoMap[name]||name;
+  let html=`<div class="org-node-wrap">
+    <div class="org-connector-up" style="visibility:${level===0?'hidden':'visible'}"></div>
+    <div class="org-node ${notVal}" onclick="toggleNode('${sn}')" title="${name}">
+      <div>${displayName}</div>
+      ${rango?`<div class="org-node-pos">${rango}</div>`:''}
+      ${notVal?`<div style="font-size:9px;margin-top:2px;">⚠️ No validado</div>`:''}
+      ${hasKids?`<div style="font-size:9px;margin-top:2px;opacity:0.8;">${isOpen?'▾':'▸'} ${kids.length}</div>`:''}
+    </div>`;
+  if(hasKids&&isOpen){
+    html+=`<div class="org-connector-down"></div>`;
+    html+=`<div class="org-children${kids.length===1?' org-children-single':''}">`;
+    kids.forEach(k=>{html+=buildOrgNode(k,level+1);});
+    html+=`</div>`;
+  }
+  html+=`</div>`;
+  return html;
+}
+
 function toggleNode(name){if(openNodes.has(name))openNodes.delete(name);else openNodes.add(name);renderTree();}
 function expandAll(){RAW.forEach(([n])=>openNodes.add(n));Object.keys(children).forEach(k=>openNodes.add(k));renderTree();}
 function collapseAll(){openNodes=new Set(['Luis Enrique Cruz']);renderTree();}
@@ -712,7 +766,9 @@ function renderTree(){
   }
 
   // Build main tree
-  let html = buildNode('Luis Enrique Cruz',0);
+  let html = currentView==='org'
+    ? `<div class="org-view">${buildOrgNode('Luis Enrique Cruz',0)}</div>`
+    : buildNode('Luis Enrique Cruz',0);
 
   // Find orphaned users — those not connected to the tree
   const allNames = new Set(RAW.map(r=>r[0]));
