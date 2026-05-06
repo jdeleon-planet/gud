@@ -723,18 +723,90 @@ function renderTree(){
   if(q){
     const matches=RAW.filter(([n])=>n.toLowerCase().includes(q)||(emailMap[n]||'').toLowerCase().includes(q));
     if(currentView==='org'){
-      tree.innerHTML=`<div class="org-scroll-wrap"><div class="org-view" style="display:flex;flex-wrap:wrap;gap:12px;justify-content:flex-start;">
-        ${matches.map(([n])=>{
+      // For each match, build the full chain from root down to the node + its children
+      function buildOrgChainNode(name, highlightName, level){
+        const kids=(children[name]||[]).sort((a,b)=>a.localeCompare(b));
+        const isMatch=name===highlightName;
+        const rango=rangoMap[name]||'';
+        const notVal=notValidatedMap[name]?'not-validated':'';
+        const displayName=nombreEncontradoMap[name]||name;
+        const sn=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        const highlight=isMatch?'box-shadow:0 0 0 3px #FFD700;transform:scale(1.05);':'opacity:0.7;';
+        let html=`<div class="org-node-wrap">
+          <div class="org-connector-up" style="visibility:${level===0?'hidden':'visible'}"></div>
+          <div class="org-node ${notVal}" style="${highlight}" title="${name}">
+            <div>${displayName}</div>
+            ${rango?`<div class="org-node-pos">${rango}</div>`:''}
+            ${isMatch?`<div style="font-size:9px;margin-top:2px;">⭐ Resultado</div>`:''}
+          </div>`;
+        // Show children only for the matched node
+        if(isMatch&&kids.length>0){
+          html+=`<div class="org-connector-down"></div>`;
+          html+=`<div class="org-children${kids.length===1?' org-children-single':''}">`;
+          kids.forEach(k=>{
+            const kRango=rangoMap[k]||'';
+            const kDisplay=nombreEncontradoMap[k]||k;
+            const kNotVal=notValidatedMap[k]?'not-validated':'';
+            html+=`<div class="org-node-wrap" style="padding:0 8px;">
+              <div class="org-connector-up"></div>
+              <div class="org-node ${kNotVal}" title="${k}">
+                <div>${kDisplay}</div>
+                ${kRango?`<div class="org-node-pos">${kRango}</div>`:''}
+              </div>
+            </div>`;
+          });
+          html+=`</div>`;
+        }
+        html+=`</div>`;
+        return html;
+      }
+
+      function buildOrgPath(chain, matchName){
+        // chain = [root, ..., parent, matchName]
+        if(chain.length===0) return buildOrgChainNode(matchName, matchName, 0);
+        let html=`<div class="org-node-wrap">
+          <div class="org-connector-up" style="visibility:hidden"></div>`;
+        // Build nested chain
+        let inner='';
+        for(let i=chain.length-1;i>=0;i--){
+          const n=chain[i];
           const rango=rangoMap[n]||'';
           const notVal=notValidatedMap[n]?'not-validated':'';
           const displayName=nombreEncontradoMap[n]||n;
-          const sn=n.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-          return`<div class="org-node-wrap" style="padding:0;">
-            <div class="org-node ${notVal}" style="min-width:140px;max-width:180px;" title="${n}">
-              <div>${displayName}</div>
-              ${rango?`<div class="org-node-pos">${rango}</div>`:''}
-              ${notVal?`<div style="font-size:9px;margin-top:2px;">⚠️ No validado</div>`:''}
-            </div>
+          if(i===0){
+            inner=`<div class="org-node-wrap">
+              <div class="org-node ${notVal}" style="opacity:0.7;" title="${n}">
+                <div>${displayName}</div>
+                ${rango?`<div class="org-node-pos">${rango}</div>`:''}
+              </div>
+              <div class="org-connector-down"></div>
+              <div class="org-children org-children-single">${inner}</div>
+            </div>`;
+          } else {
+            inner=`<div class="org-node-wrap">
+              <div class="org-connector-up"></div>
+              <div class="org-node ${notVal}" style="opacity:0.7;" title="${n}">
+                <div>${displayName}</div>
+                ${rango?`<div class="org-node-pos">${rango}</div>`:''}
+              </div>
+              <div class="org-connector-down"></div>
+              <div class="org-children org-children-single">${inner}</div>
+            </div>`;
+          }
+        }
+        // Add match node at end
+        inner=inner.replace('</div>\n            </div>',`</div>
+              <div class="org-children org-children-single">${buildOrgChainNode(matchName,matchName,1)}</div>
+            </div>`);
+        return inner;
+      }
+
+      tree.innerHTML=`<div class="org-scroll-wrap"><div class="org-view" style="display:flex;flex-wrap:wrap;gap:32px;justify-content:flex-start;align-items:flex-start;">
+        ${matches.map(([n])=>{
+          const chain=getChain(n); // [n, parent, ..., root] — reverse it
+          const reversed=[...chain].reverse().slice(0,-1); // root to parent, excluding n itself
+          return`<div style="background:#f8f9fb;border:1px solid #e0e0e0;border-radius:10px;padding:16px;display:inline-flex;flex-direction:column;align-items:center;">
+            ${buildOrgPath(reversed,n)}
           </div>`;
         }).join('')}
       </div></div>`;
